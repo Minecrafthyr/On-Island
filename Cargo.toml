@@ -1,0 +1,13 @@
+[package]
+name = "on_island"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossterm = { version = "0.29.0", features = ["serde"] }
+# fixed = "1.31.0"
+itertools = "0.15.0"
+rand = "0.10.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
+# uom = "0.38.0"

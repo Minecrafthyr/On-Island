@@ -6,6 +6,7 @@ pub struct Player {
     pub attrs: Attributes,
     pub location: Location,
     pub inventory: ItemStacks,
+    pub activity: f64,
 }
 
 impl Default for Player {
@@ -18,6 +19,7 @@ impl Player {
             attrs: Attributes::new(),
             location: Location::StrandedShip,
             inventory: ItemStacks::new(),
+            activity: 1.0,
         }
     }
 

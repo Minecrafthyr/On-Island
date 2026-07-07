@@ -12,11 +12,12 @@ impl Game {
         }
     }
 
-    pub fn action_time_pass(&mut self, time: Duration) -> Duration {
+    pub fn action_time_pass(&mut self, time: Duration, activity: f64) -> Duration {
         let mut progress = Duration::ZERO;
         if time.is_zero() {
             return time;
         }
+        self.player.activity = activity;
         while progress < time {
             self.tick_ms();
             let step = Duration::MILLISECOND * self.player.efficiency();
@@ -25,6 +26,7 @@ impl Game {
             }
             progress += step;
         }
+        self.player.activity = 1.0;
         Duration::ZERO
     }
 }

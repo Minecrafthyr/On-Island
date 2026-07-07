@@ -17,7 +17,8 @@ pub struct RestorationData {
 }
 #[derive(Debug)]
 pub struct LocationData {
-    pub item_stacks: ItemStacks,
+    pub pickup_stacks: ItemStacks,
+    pub gather_stacks: ItemStacks,
     pub restore: Vec<RestorationData>,
 }
 impl LocationData {
@@ -26,10 +27,10 @@ impl LocationData {
             let next_time = r.last_time + r.interval;
             if next_time <= time && rng.random_bool(r.chance) {
                 r.last_time = next_time;
-                if let Some(ei) = self.item_stacks.iter_mut().find(|is| is.item == r.item) {
+                if let Some(ei) = self.gather_stacks.iter_mut().find(|is| is.item == r.item) {
                     ei.count += rng.random_range(r.count.clone());
                 } else {
-                    self.item_stacks
+                    self.gather_stacks
                         .push(ItemStack { item: r.item, count: rng.random_range(r.count.clone()) });
                 }
             }
@@ -70,11 +71,13 @@ impl Locations {
         use item::Item::*;
         Self([
             LocationData {
-                item_stacks: [(Biscuit, 10u64), (Water, 10u64)].into(),
+                pickup_stacks: [(Biscuit, 10u64), (Water, 10u64)].into(),
+                gather_stacks: ItemStacks::new(),
                 restore: vec![],
             },
             LocationData {
-                item_stacks: [(RawFish, 10), (Rock, 50)].into(),
+                pickup_stacks: [(Rock, 50)].into(),
+                gather_stacks: [(RawFish, 10)].into(),
                 restore: vec![RestorationData {
                     item: RawFish,
                     count: 1..=2,
@@ -85,7 +88,8 @@ impl Locations {
                 }],
             },
             LocationData {
-                item_stacks: [(Wood, 400)].into(),
+                pickup_stacks: ItemStacks::new(),
+                gather_stacks: [(Wood, 400)].into(),
                 restore: vec![RestorationData {
                     item: Wood,
                     count: 1..=1,

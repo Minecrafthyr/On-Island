@@ -5,7 +5,11 @@ use crossterm::{
     event::{Event, KeyCode, read},
     execute, queue,
     style::Print,
-    terminal::{Clear, ClearType::UntilNewLine, disable_raw_mode, enable_raw_mode},
+    terminal::{
+        Clear,
+        ClearType::{FromCursorDown, UntilNewLine},
+        disable_raw_mode, enable_raw_mode,
+    },
 };
 
 use super::*;
@@ -44,7 +48,7 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
         self
     }
 
-    pub fn request(self) -> NumberResult<T>
+    pub fn request(self) -> Option<T>
     where
         <T as FromStr>::Err: std::fmt::Debug,
     {
@@ -64,7 +68,7 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
             // let (x, y) = position().unwrap();
             if let Event::Key(key_event) = read().unwrap() {
                 if key_event.code == KeyCode::Esc {
-                    return NumberResult::Cancel;
+                    return None;
                 }
                 if let KeyCode::Char(ch) = key_event.code
                     && ch.is_ascii_digit()
@@ -101,7 +105,7 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
                         buf.clear();
                         continue;
                     }
-                    return NumberResult::Number(number);
+                    return Some(number);
                 }
             }
         }
@@ -109,10 +113,12 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
 }
 
 pub fn popup_message(msg: &str) {
-    let out = &mut stdout();
+    let out = stdout();
     execute!(out, MoveTo(0, 0)).unwrap();
     write_lines(msg);
+    execute!(stdout(), Clear(FromCursorDown)).unwrap();
     sleep(std::time::Duration::from_millis(200));
+    write_lines("输入任意键继续……");
     loop {
         match read().unwrap() {
         Event::Key(key_event) if key_event.is_press() => return,

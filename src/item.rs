@@ -13,6 +13,7 @@ pub enum Item {
     Water,
     RawFish,
     Wood,
+    Tree,
     Rock,
 }
 impl NameAndDesc for Item {
@@ -22,24 +23,35 @@ impl NameAndDesc for Item {
 }
 
 impl Item {
-    pub fn gather_time(&self, game: &mut Game) -> Duration {
+    pub fn pick_up_time(&self) -> Option<Duration> {
+        use Item::*;
         match self {
-        Item::Biscuit => Duration::seconds(5),
-        Item::Water => Duration::seconds(5),
-        Item::RawFish => Duration::seconds(game.rng.random_range(120..=2000)),
-        Item::Wood => Duration::minutes(30),
-        Item::Rock => Duration::seconds(1),
+        Biscuit | Water | Rock | RawFish => Some(Duration::milliseconds(500)),
+        Wood => Some(Duration::seconds(5)),
+        _ => None,
         }
     }
 
-    pub fn use_data(&self) -> Option<(Duration, Vec<(Attribute, Duration)>)> {
+    pub fn gather_items(&self, game: &mut Game) -> Option<(Duration, f64, ItemStacks)> {
         match self {
-        Item::Biscuit => Some((Duration::seconds(5), vec![
+        Item::RawFish => Some((
+            Duration::seconds(game.rng.random_range(120..=2000)),
+            1.2,
+            [(Item::RawFish, 1)].into(),
+        )),
+        Item::Tree => Some((Duration::minutes(30), 2.0, [(Item::Wood, 2)].into())),
+        _ => None,
+        }
+    }
+
+    pub fn use_data(&self) -> Option<(Duration, f64, Vec<(Attribute, Duration)>)> {
+        match self {
+        Item::Biscuit => Some((Duration::seconds(5), 1.0, vec![
             (Energy, Duration::hours(1)),
             (Water, Duration::hours(-1)),
         ])),
-        Item::Water => Some((Duration::seconds(5), vec![(Water, Duration::hours(2))])),
-        Item::RawFish => Some((Duration::seconds(60), vec![
+        Item::Water => Some((Duration::seconds(5), 1.0, vec![(Water, Duration::hours(2))])),
+        Item::RawFish => Some((Duration::seconds(60), 1.0, vec![
             (Energy, Duration::hours(2)),
             (Water, Duration::minutes(50)),
         ])),

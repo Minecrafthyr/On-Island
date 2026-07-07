@@ -1,0 +1,37 @@
+item:
+  biscuit:
+    name: 饼干
+    description: 一些饼干，会让你口渴。
+  water:
+    name: 水
+    description: 清凉的水。
+  raw_fish:
+    name: 鱼
+    description: 新鲜的鱼，可以吃。
+  wood:
+    name: 木头
+    description: 坚硬的木头。
+  rock:
+    name: 石块
+    description: 坚硬的石块。
+location:
+  stranded_ship:
+    name: 搁浅的船
+    description: 一艘搁浅的船，周围是一片海滩。
+  beach:
+    name: 海滩
+    description: 一片金黄的海滩。
+  forest:
+    name: 森林
+    description: 一片茂密的森林，树木高耸入云。
+attribute:
+  health:
+    name: 血量
+    description: 角色的生命值。
+  energy:
+    name: 能量
+    description: 角色的热量。
+  water:
+    name: 水分
+    description: 角色的水分。
+  

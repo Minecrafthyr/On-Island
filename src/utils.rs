@@ -1,8 +1,15 @@
-use std::io::stdout;
+use std::{borrow::Cow, fmt::Display, io::Write, ops::RangeInclusive, str::FromStr, thread::sleep};
 
-use crossterm::queue;
+use crossterm::{
+    cursor::{MoveTo, MoveToColumn, MoveToNextLine},
+    event::{Event, KeyCode, read},
+    execute, queue,
+    style::Print,
+    terminal::{Clear, ClearType::UntilNewLine, disable_raw_mode, enable_raw_mode},
+};
 
 use super::*;
+use crate::statics::stdout;
 pub const MS_PER_S: u64 = 1000;
 pub const MS_PER_MIN: u64 = 1000 * 60;
 #[inline]
@@ -55,13 +62,12 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
         let mut buf = String::new();
         loop {
             // let (x, y) = position().unwrap();
-            match read().unwrap() {
-            Event::Key(key_event) => {
+            if let Event::Key(key_event) = read().unwrap() {
                 if key_event.code == KeyCode::Esc {
                     return NumberResult::Cancel;
                 }
                 if let KeyCode::Char(ch) = key_event.code
-                    && ch.is_digit(10)
+                    && ch.is_ascii_digit()
                 {
                     buf.push(ch);
                     execute!(out, MoveToColumn(0), Print(&buf), Clear(UntilNewLine)).unwrap();
@@ -98,8 +104,6 @@ impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a,
                     return NumberResult::Number(number);
                 }
             }
-            _ => {}
-            }
         }
     }
 }
@@ -108,7 +112,7 @@ pub fn popup_message(msg: &str) {
     let out = &mut stdout();
     execute!(out, MoveTo(0, 0)).unwrap();
     write_lines(msg);
-    sleep(Duration::from_millis(200));
+    sleep(std::time::Duration::from_millis(200));
     loop {
         match read().unwrap() {
         Event::Key(key_event) if key_event.is_press() => return,
@@ -119,10 +123,38 @@ pub fn popup_message(msg: &str) {
 
 pub fn get_stdout() {}
 
-pub fn write_lines(s: &str) {
+pub fn queue_lines(s: &str) {
     let out = &mut stdout();
     for line in s.lines() {
         queue!(out, Print(line), Clear(UntilNewLine), MoveToNextLine(1)).unwrap();
     }
-    out.flush().unwrap();
+}
+pub fn write_lines(s: &str) {
+    queue_lines(s);
+    stdout().flush().unwrap();
+}
+
+pub trait NameAndDesc {
+    const PREFIX: &str;
+    fn get_id(&self) -> &str;
+    fn name(&self) -> Cow<'_, str> { t!(format!("{}.{}.name", Self::PREFIX, self.get_id())) }
+    fn description(&self) -> Cow<'_, str> {
+        t!(format!("{}.{}.description", Self::PREFIX, self.get_id()))
+    }
+}
+
+pub struct RawModeGuard;
+
+impl RawModeGuard {
+    pub fn new() -> std::io::Result<Self> {
+        enable_raw_mode()?;
+        Ok(Self)
+    }
+}
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        // 忽略错误，因为 drop 中不能 panic（否则会导致 double panic）
+        let _ = disable_raw_mode();
+    }
 }

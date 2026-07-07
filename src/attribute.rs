@@ -1,5 +1,12 @@
+use std::ops::{Index, IndexMut};
+
+use strum::EnumCount;
+use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
+use time::Duration;
+
 use super::*;
-#[derive(Debug, EnumIter, EnumCount, Clone, Copy)]
+#[derive(Debug, EnumIter, EnumCount, Clone, Copy, PartialEq, Eq, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum Attribute {
     Health,
     Energy,
@@ -7,27 +14,26 @@ pub enum Attribute {
 }
 pub use Attribute::*;
 
-impl Attribute {
-    pub fn name(&self) -> &'static str {
-        use Attribute::*;
-        match self {
-        Health => "血量",
-        Energy => "能量",
-        Water => "水分",
-        }
-    }
+impl NameAndDesc for Attribute {
+    const PREFIX: &str = "attribute";
+
+    fn get_id(&self) -> &str { self.into() }
 }
 
 #[derive(Debug)]
-pub struct Attributes([Time; Attribute::COUNT]);
+pub struct Attributes([Duration; Attribute::COUNT]);
 impl Index<Attribute> for Attributes {
-    type Output = Time;
+    type Output = Duration;
 
     fn index(&self, index: Attribute) -> &Self::Output { &self.0[index as usize] }
 }
 impl IndexMut<Attribute> for Attributes {
     fn index_mut(&mut self, index: Attribute) -> &mut Self::Output { &mut self.0[index as usize] }
 }
+impl Default for Attributes {
+    fn default() -> Self { Self::new() }
+}
+
 impl Attributes {
-    pub const fn new() -> Self { Self([Time::h(72), Time::h(72), Time::h(72)]) }
+    pub const fn new() -> Self { Self([Duration::hours(72); 3]) }
 }

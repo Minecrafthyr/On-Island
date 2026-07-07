@@ -1,19 +1,30 @@
+use time::Duration;
+
 use super::*;
 
 impl Game {
-    pub fn time_pass(&mut self, time: Time) {
-        for _ in 0..=time.0 {
+    pub fn time_pass(&mut self, time: Duration) {
+        if time.is_zero() {
+            return;
+        }
+        for _ in 0..=time.whole_milliseconds() {
             self.tick_ms();
         }
     }
 
-    pub fn action_time_pass(&mut self, time: Time) -> u64 {
-        let mut actual_ms = (time.as_f64() / self.player.efficiency()) as u64;
-        while actual_ms != 0 {
-            self.tick_ms();
-            actual_ms = (actual_ms as f64 / self.player.efficiency()) as u64;
-            actual_ms -= 1;
+    pub fn action_time_pass(&mut self, time: Duration) -> Duration {
+        let mut progress = Duration::ZERO;
+        if time.is_zero() {
+            return time;
         }
-        return 0;
+        while progress < time {
+            self.tick_ms();
+            let step = Duration::MILLISECOND * self.player.efficiency();
+            if step.is_zero() {
+                return progress;
+            }
+            progress += step;
+        }
+        Duration::ZERO
     }
 }

@@ -1,36 +1,7 @@
 #![feature(const_trait_impl)]
 
-use std::{
-    fmt::Display,
-    io::Write,
-    mem::transmute,
-    ops::{Index, IndexMut, RangeInclusive},
-    str::FromStr,
-    thread::sleep,
-    time::Duration,
-};
-
-use crossterm::{
-    cursor::{MoveTo, MoveToColumn, MoveToNextLine},
-    event::{Event, KeyCode, read},
-    execute,
-    style::Print,
-    terminal::{
-        Clear,
-        ClearType::{FromCursorDown, UntilNewLine},
-        EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
-    },
-};
-use itertools::Itertools;
-use rand::RngExt;
-use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::{EnumCount, EnumIter};
-
 pub mod utils;
 use utils::*;
-pub mod time;
-use time::*;
-
 pub mod item;
 use item::*;
 pub mod location;
@@ -42,5 +13,13 @@ use player::*;
 pub mod game;
 use game::*;
 pub mod effect;
+pub mod statics;
 
-fn main() { Game::new().run() }
+#[macro_use]
+extern crate rust_i18n;
+i18n!("locales", fallback = "zh_CN");
+fn main() -> std::io::Result<()> {
+    let _guard = RawModeGuard::new()?; // 守卫持有 raw mode
+    Game::new().run();
+    Ok(())
+}

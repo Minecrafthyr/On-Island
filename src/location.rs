@@ -1,11 +1,17 @@
-use rand::Rng;
+use std::ops::{Index, IndexMut, RangeInclusive};
+
+use rand::{Rng, RngExt};
+use strum::EnumCount;
+use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
+use time::Duration;
 
 use super::*;
 #[derive(Debug)]
 pub struct RestorationData {
     pub item: Item,
     pub count: RangeInclusive<u64>,
-    pub interval: Time,
+    pub interval: Duration,
+    pub last_time: Duration,
     pub chance: f64,
     pub limit: u64,
 }
@@ -15,9 +21,11 @@ pub struct LocationData {
     pub restore: Vec<RestorationData>,
 }
 impl LocationData {
-    pub fn tick(&mut self, time: Time, rng: &mut impl Rng) {
+    pub fn tick(&mut self, time: Duration, rng: &mut impl Rng) {
         for r in &mut self.restore {
-            if time % r.interval == Time(0) && rng.random_bool(r.chance) {
+            let next_time = r.last_time + r.interval;
+            if next_time <= time && rng.random_bool(r.chance) {
+                r.last_time = next_time;
                 if let Some(ei) = self.item_stacks.iter_mut().find(|is| is.item == r.item) {
                     ei.count += rng.random_range(r.count.clone());
                 } else {
@@ -28,29 +36,21 @@ impl LocationData {
         }
     }
 }
-#[derive(Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum Location {
     StrandedShip,
     Beach,
     Forest,
 }
-impl Location {
-    pub fn name(&self) -> &'static str {
-        match self {
-        Self::StrandedShip => "搁浅的船",
-        Self::Beach => "海滩",
-        Self::Forest => "森林",
-        }
-    }
+impl NameAndDesc for Location {
+    const PREFIX: &str = "location";
 
-    pub fn description(&self) -> &'static str {
-        match self {
-        Self::StrandedShip => "一艘搁浅的船，周围是一片海滩。",
-        Self::Beach => "一片金黄的海滩。",
-        Self::Forest => "一片茂密的森林，树木高耸入云。",
-        }
-    }
+    fn get_id(&self) -> &str { self.into() }
 }
+
 #[derive(Debug)]
 pub struct Locations(pub [LocationData; Location::COUNT]);
 impl Index<Location> for Locations {
@@ -61,39 +61,37 @@ impl Index<Location> for Locations {
 impl IndexMut<Location> for Locations {
     fn index_mut(&mut self, index: Location) -> &mut Self::Output { &mut self.0[index as usize] }
 }
+impl Default for Locations {
+    fn default() -> Self { Self::new() }
+}
+
 impl Locations {
     pub fn new() -> Self {
         use item::Item::*;
         Self([
             LocationData {
-                item_stacks: vec![ItemStack { item: Biscuit, count: 10 }, ItemStack {
-                    item: Water,
-                    count: 10,
-                }]
-                .into(),
+                item_stacks: [(Biscuit, 10u64), (Water, 10u64)].into(),
                 restore: vec![],
             },
             LocationData {
-                item_stacks: vec![ItemStack { item: RawFish, count: 10 }, ItemStack {
-                    item: Rock,
-                    count: 50,
-                }]
-                .into(),
+                item_stacks: [(RawFish, 10), (Rock, 50)].into(),
                 restore: vec![RestorationData {
                     item: RawFish,
-                    count: RangeInclusive::from(1..=2),
-                    interval: Time::m(20),
-                    chance: 30.0,
+                    count: 1..=2,
+                    interval: Duration::minutes(20),
+                    last_time: Duration::ZERO,
+                    chance: 0.3,
                     limit: 10,
                 }],
             },
             LocationData {
-                item_stacks: vec![ItemStack { item: Wood, count: 400 }].into(),
+                item_stacks: [(Wood, 400)].into(),
                 restore: vec![RestorationData {
                     item: Wood,
-                    count: RangeInclusive::from(1..=1),
-                    interval: Time::d(10),
-                    chance: 100.0,
+                    count: 1..=1,
+                    interval: Duration::days(10),
+                    last_time: Duration::ZERO,
+                    chance: 1.0,
                     limit: 500,
                 }],
             },
@@ -105,12 +103,12 @@ impl Locations {
 pub struct Connection {
     pub a: Location,
     pub b: Location,
-    pub time_a_to_b: Time,
-    pub time_b_to_a: Time,
+    pub time_a_to_b: Duration,
+    pub time_b_to_a: Duration,
 }
 
 impl Connection {
-    pub fn other_side(&self, l: Location) -> Option<(Location, Time)> {
+    pub fn other_side(&self, l: Location) -> Option<(Location, Duration)> {
         if l == self.a {
             Some((self.b, self.time_a_to_b))
         } else if l == self.b {

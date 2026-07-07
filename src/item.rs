@@ -1,10 +1,13 @@
 use std::ops::{Deref, DerefMut};
 
 use rand::RngExt;
+use strum_macros::{EnumString, IntoStaticStr};
+use time::Duration;
 
 use super::*;
-use crate::time::offset::TimeOffset;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum Item {
     Biscuit,
     Water,
@@ -12,45 +15,34 @@ pub enum Item {
     Wood,
     Rock,
 }
+impl NameAndDesc for Item {
+    const PREFIX: &str = "item";
+
+    fn get_id(&self) -> &str { self.into() }
+}
 
 impl Item {
-    pub fn name(&self) -> &'static str {
+    pub fn gather_time(&self, game: &mut Game) -> Duration {
         match self {
-        Item::Biscuit => "饼干",
-        Item::Water => "水",
-        Item::RawFish => "鱼",
-        Item::Wood => "木头",
-        Item::Rock => "石块",
+        Item::Biscuit => Duration::seconds(5),
+        Item::Water => Duration::seconds(5),
+        Item::RawFish => Duration::seconds(game.rng.random_range(120..=2000)),
+        Item::Wood => Duration::minutes(30),
+        Item::Rock => Duration::seconds(1),
         }
     }
 
-    pub fn description(&self) -> &'static str {
+    pub fn use_data(&self) -> Option<(Duration, Vec<(Attribute, Duration)>)> {
         match self {
-        Item::Biscuit => "一些饼干，会让你口渴。",
-        Item::Water => "清凉的水。",
-        Item::RawFish => "新鲜的鱼，可以吃。",
-        Item::Wood => "坚硬的木头。",
-        Item::Rock => "坚硬的石块。",
-        }
-    }
-
-    pub fn gather_time(&self, game: &mut Game) -> Time {
-        match self {
-        Item::Biscuit => Time::s(5),
-        Item::Water => Time::s(5),
-        Item::RawFish => Time::s(game.rng.random_range(120..=2000)),
-        Item::Wood => Time::m(30),
-        Item::Rock => Time::m(1),
-        }
-    }
-
-    pub fn use_data(&self) -> Option<(Time, Vec<(Attribute, TimeOffset)>)> {
-        match self {
-        Item::Biscuit =>
-            Some((Time::s(5), vec![(Energy, TimeOffset::h(1)), (Water, TimeOffset::h(-1))])),
-        Item::Water => Some((Time::s(5), vec![(Water, TimeOffset::h(2))])),
-        Item::RawFish =>
-            Some((Time::s(60), vec![(Energy, TimeOffset::h(2)), (Water, TimeOffset::m(50))])),
+        Item::Biscuit => Some((Duration::seconds(5), vec![
+            (Energy, Duration::hours(1)),
+            (Water, Duration::hours(-1)),
+        ])),
+        Item::Water => Some((Duration::seconds(5), vec![(Water, Duration::hours(2))])),
+        Item::RawFish => Some((Duration::seconds(60), vec![
+            (Energy, Duration::hours(2)),
+            (Water, Duration::minutes(50)),
+        ])),
         _ => None,
         }
     }
@@ -62,6 +54,13 @@ pub struct ItemStack {
     pub count: u64,
 }
 
+impl ItemStack {
+    pub fn new(item: Item, count: u64) -> Self { Self { item, count } }
+}
+impl From<(Item, u64)> for ItemStack {
+    fn from(value: (Item, u64)) -> Self { Self { item: value.0, count: value.1 } }
+}
+
 #[derive(Debug, Clone)]
 pub struct ItemStacks(pub Vec<ItemStack>);
 impl Deref for ItemStacks {
@@ -71,6 +70,10 @@ impl Deref for ItemStacks {
 }
 impl DerefMut for ItemStacks {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+
+impl Default for ItemStacks {
+    fn default() -> Self { Self::new() }
 }
 
 impl ItemStacks {
@@ -98,6 +101,17 @@ impl ItemStacks {
         }
     }
 }
-impl From<Vec<ItemStack>> for ItemStacks {
-    fn from(value: Vec<ItemStack>) -> Self { Self(value) }
+impl<I, C: IntoIterator<Item = I>> From<C> for ItemStacks
+where
+    ItemStack: From<I>,
+{
+    fn from(value: C) -> Self { Self::from_iter(value) }
+}
+impl<I> FromIterator<I> for ItemStacks
+where
+    ItemStack: From<I>,
+{
+    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
+        Self(iter.into_iter().map(ItemStack::from).collect())
+    }
 }

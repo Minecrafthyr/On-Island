@@ -14,6 +14,15 @@ item:
   rock:
     name: 石块
     description: 坚硬的石块。
+  tree_vine:
+    name: 树藤
+    description: 长而柔韧的树藤。
+  dry_tree_vine:
+    name: 干树藤
+    description: 经过烘干的树藤，更适合编织。
+  dry_tree_vine_backpack:
+    name: 树藤背包
+    description: 用干树藤编织而成的背包。
 location:
   stranded_ship:
     name: 搁浅的船
@@ -34,4 +43,66 @@ attribute:
   water:
     name: 水分
     description: 角色的水分。
+game:
+  title: "=== On Island ===\n"
+  stats: "%{name}: %{value}\n"
+  status_line: "位置: %{location}\n[t]旅行 [p]拾取 [g]采集 [c]合成 [u]使用物品 [r]休息 [q]退出"
+  over: "游戏结束！\n%{message}"
+  over_message: "游戏结束：%{message}"
+  starved: 你被饿死了！
+  dehydrated: 你被渴死了！
+  injured: 你伤重而死！
+  quit: 你关闭了游戏。
+action:
+  inventory:
+    entry: "%{name} ×%{count}\n- %{description}"
+  pickup:
+    title: "有以下物品可拾取：\n"
+    choose: 选择要拾取的物品编号
+    how_many: 拾取多少？
+    remaining: 你无法拾取剩下的%{count}个物品！
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}，%{activity}×活动)\n"
+  gather:
+    title: "有以下物品可供采集：\n"
+    choose: 选择要采集的物品编号
+    how_many: 采集多少？
+    entry: "[%{index}] %{name} ×%{count}\n- %{description}\n"
+  rest:
+    prompt: 请选择要休息的时间（分钟）
+  travel:
+    title: "有以下地点可以前往：\n"
+    entry: "[%{index}] name (%{time})\n- %{description}\n"
+    choose: 请选择要前往的地点编号
+  use_item:
+    title: "有以下物品可供使用：\n"
+    choose: 请选择要使用的物品编号
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}，%{activity}×活动) %{attrs}\n- %{description}\n"
+    effect: "%{attr}+%{value}"
+  craft:
+    title: "可用合成配方：\n"
+    choose: 请选择要制作的配方编号
+    how_many: 制作多少次？
+    entry: "[%{index}] %{title}\n- 需要: %{inputs}\n- 产出: %{outputs} (%{duration}，%{activity}×活动)\n"
+    none: 你当前没有足够的材料来进行任何合成。
+crafting:
+  dry_tree_vine:
+    name: 烤干树藤
+  dry_tree_vine_backpack:
+    name: 干树藤背包
+  inventory:
+    entry: "%{name} ×%{count}\n- %{description}"
+  travel:
+    title: "可以前往以下地点：\n"
+    choose: 请选择要前往的地点
+    entry: "[%{index}] %{name} (%{time}) - %{description}\n"
+utils:
+  number_requester:
+    default: "（默认%{value}）"
+    range: "（%{start}–%{end}）"
+    prompt: "\n%{prompt}%{range_str}%{default_str}："
+    empty: "\n输入为空。%{prompt}"
+    invalid: "\n输入无效。%{prompt}"
+    error: "\n%{error}%{prompt}"
+  popup_message:
+    continue_prompt: 输入任意键继续……
   

@@ -1,6 +1,5 @@
 use std::ops::{Index, IndexMut};
 
-use strum::EnumCount;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
@@ -21,19 +20,41 @@ impl NameAndDesc for Attribute {
 }
 
 #[derive(Debug)]
-pub struct Attributes([Duration; Attribute::COUNT]);
+pub struct Attributes {
+    pub health: Duration,
+    pub energy: Duration,
+    pub water: Duration,
+}
 impl Index<Attribute> for Attributes {
     type Output = Duration;
 
-    fn index(&self, index: Attribute) -> &Self::Output { &self.0[index as usize] }
+    fn index(&self, index: Attribute) -> &Self::Output {
+        match index {
+        Attribute::Health => &self.health,
+        Attribute::Energy => &self.energy,
+        Attribute::Water => &self.water,
+        }
+    }
 }
 impl IndexMut<Attribute> for Attributes {
-    fn index_mut(&mut self, index: Attribute) -> &mut Self::Output { &mut self.0[index as usize] }
+    fn index_mut(&mut self, index: Attribute) -> &mut Self::Output {
+        match index {
+        Attribute::Health => &mut self.health,
+        Attribute::Energy => &mut self.energy,
+        Attribute::Water => &mut self.water,
+        }
+    }
 }
 impl Default for Attributes {
     fn default() -> Self { Self::new() }
 }
 
 impl Attributes {
-    pub const fn new() -> Self { Self([Duration::hours(72); 3]) }
+    pub const fn new() -> Self {
+        Self {
+            health: Duration::hours(72),
+            energy: Duration::hours(72),
+            water: Duration::hours(72),
+        }
+    }
 }

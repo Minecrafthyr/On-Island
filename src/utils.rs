@@ -1,141 +1,22 @@
-use std::{borrow::Cow, fmt::Display, io::Write, ops::RangeInclusive, str::FromStr, thread::sleep};
+use std::{borrow::Cow, io::Write};
 
 use crossterm::{
-    cursor::{MoveTo, MoveToColumn, MoveToNextLine},
-    event::{Event, KeyCode, read},
-    execute, queue,
+    cursor::MoveToNextLine,
+    queue,
     style::Print,
-    terminal::{
-        Clear,
-        ClearType::{FromCursorDown, UntilNewLine},
-        disable_raw_mode, enable_raw_mode,
-    },
+    terminal::{Clear, ClearType::UntilNewLine, disable_raw_mode, enable_raw_mode},
 };
 
 use super::*;
 use crate::statics::stdout;
-pub const MS_PER_S: u64 = 1000;
-pub const MS_PER_MIN: u64 = 1000 * 60;
-#[inline]
-pub fn seconds(s: u64) -> u64 { s * MS_PER_S }
-#[inline]
-pub fn minutes(s: u64) -> u64 { s * MS_PER_MIN }
-pub enum NumberResult<T> {
-    Number(T),
-    Cancel,
-}
-pub struct NumberRequester<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> {
-    prompt: &'a str,
-    range: Option<std::range::RangeInclusive<T>>,
-    check: Option<&'a dyn Fn(T) -> Option<String>>,
-    default: Option<T>,
-}
-impl<'a, T: std::cmp::PartialOrd + FromStr + Display + Copy> NumberRequester<'a, T> {
-    pub fn new(prompt: &'a str) -> Self { Self { prompt, range: None, check: None, default: None } }
 
-    pub fn range(mut self, range: RangeInclusive<T>) -> Self {
-        self.range = Some(std::range::RangeInclusive::<T>::from(range));
-        self
-    }
-
-    pub fn check(mut self, check: &'a dyn Fn(T) -> Option<String>) -> Self {
-        self.check = Some(check);
-        self
-    }
-
-    pub fn default(mut self, default: T) -> Self {
-        self.default = Some(default);
-        self
-    }
-
-    pub fn request(self) -> Option<T>
-    where
-        <T as FromStr>::Err: std::fmt::Debug,
-    {
-        let out = &mut stdout();
-        let default_str =
-            if let Some(v) = self.default { format!("（默认{v}）") } else { "".to_string() };
-        let range_str = if let Some(r) = self.range {
-            format!("（{}–{}）", r.start, r.last)
-        } else {
-            "".to_string()
-        };
-        let s = format!("\n{}{range_str}{default_str}：", self.prompt);
-        write_lines(&s);
-
-        let mut buf = String::new();
-        loop {
-            // let (x, y) = position().unwrap();
-            if let Event::Key(key_event) = read().unwrap() {
-                if key_event.code == KeyCode::Esc {
-                    return None;
-                }
-                if let KeyCode::Char(ch) = key_event.code
-                    && ch.is_ascii_digit()
-                {
-                    buf.push(ch);
-                    execute!(out, MoveToColumn(0), Print(&buf), Clear(UntilNewLine)).unwrap();
-                }
-                if key_event.code == KeyCode::Backspace {
-                    buf.pop();
-                    execute!(out, MoveToColumn(0), Print(&buf), Clear(UntilNewLine)).unwrap();
-                }
-                if key_event.code == KeyCode::Enter {
-                    let number = if buf.is_empty() {
-                        if let Some(v) = self.default {
-                            v
-                        } else {
-                            write_lines(&format!("\n输入为空。{s}"));
-                            continue;
-                        }
-                    } else {
-                        buf.parse().unwrap()
-                    };
-                    if let Some(r) = self.range
-                        && !r.contains(&number)
-                    {
-                        write_lines(&format!("\n输入无效。{s}"));
-                        buf.clear();
-                        continue;
-                    }
-                    if let Some(c) = self.check
-                        && let Some(f) = c(number)
-                    {
-                        write_lines(&format!("\n{f}{s}"));
-                        buf.clear();
-                        continue;
-                    }
-                    return Some(number);
-                }
-            }
-        }
-    }
-}
-
-pub fn popup_message(msg: &str) {
+pub fn queue_lines(s: impl AsRef<str>) {
     let out = stdout();
-    execute!(out, MoveTo(0, 0)).unwrap();
-    write_lines(msg);
-    execute!(stdout(), Clear(FromCursorDown)).unwrap();
-    sleep(std::time::Duration::from_millis(200));
-    write_lines("输入任意键继续……");
-    loop {
-        match read().unwrap() {
-        Event::Key(key_event) if key_event.is_press() => return,
-        _ => {}
-        }
-    }
-}
-
-pub fn get_stdout() {}
-
-pub fn queue_lines(s: &str) {
-    let out = &mut stdout();
-    for line in s.lines() {
+    for line in s.as_ref().lines() {
         queue!(out, Print(line), Clear(UntilNewLine), MoveToNextLine(1)).unwrap();
     }
 }
-pub fn write_lines(s: &str) {
+pub fn write_lines(s: impl AsRef<str>) {
     queue_lines(s);
     stdout().flush().unwrap();
 }
@@ -159,8 +40,158 @@ impl RawModeGuard {
 }
 
 impl Drop for RawModeGuard {
-    fn drop(&mut self) {
-        // 忽略错误，因为 drop 中不能 panic（否则会导致 double panic）
-        let _ = disable_raw_mode();
-    }
+    fn drop(&mut self) { let _ = disable_raw_mode(); }
+}
+#[macro_export]
+macro_rules! define {
+    (
+        $(#[$struct_meta:meta])*
+        $vis:vis struct $Struct:ident {
+            $id_vis:vis id : $IDty:ty,
+            $(
+                $f_vis:vis $field:ident : $Fty:ty
+                $( = $field_default:expr)?
+            ),* $(,)?
+        },
+        [
+            $( ($name:literal) $(. $method:ident ( $($args:tt)* ) )* ),* $(,)?
+        ]
+        $(,)? prefix = $prefix:ident
+    ) => {
+        $(#[$struct_meta])*
+        $vis struct $Struct {
+            $id_vis id: $IDty,
+            $($f_vis $field: $Fty,)*
+        }
+
+        impl $Struct {
+            pub const fn new(id: $IDty) -> Self {
+                Self {
+                    id,
+                    $($field: $crate::define!(@field_default $($field_default)?),)*
+                }
+            }
+
+            // 为每个字段生成 builder 方法
+            $crate::define!(@builder_method $Struct $(, $field: $Fty)*);
+        }
+        impl PartialEq for $Struct {
+            fn eq(&self, other: &Self) -> bool { self.id == other.id }
+        }
+
+        ::paste::paste! {
+            $(
+                #[allow(non_upper_case_globals)]
+                $vis const [< $prefix:upper $name:upper >]: &$Struct =
+                    &$Struct::new($name)
+                    $(. $method ( $($args)* ) )*;
+            )*
+
+            $vis const [< $Struct:upper S>]: &[&$Struct] = &[
+                $( [< $prefix:upper $name:upper >] , )*
+            ];
+
+            $vis const [< $Struct:upper S_MAP>]: ::phf::Map<&'static str, &'static $Struct> =
+                ::phf::phf_map! {
+                    $( $name => &[< $prefix:upper $name:upper >] , )*
+                };
+        }
+    };
+
+    (
+        $(#[$struct_meta:meta])*
+        $vis:vis struct $Struct:ident {
+            $id_vis:vis id : $IDty:ty,
+            $(
+                $f_vis:vis $field:ident : $Fty:ty
+                $( = $field_default:expr)?
+            ),* $(,)?
+        },
+        [
+            $( ($name:literal) $(. $method:ident ( $($args:tt)* ) )* ),* $(,)?
+        ]
+        $(,)?
+    ) => {
+        $(#[$struct_meta])*
+        $vis struct $Struct {
+            $id_vis id: $IDty,
+            $($f_vis $field: $Fty,)*
+        }
+
+        impl $Struct {
+            pub const fn new(id: $IDty) -> Self {
+                Self {
+                    id,
+                    $($field: $crate::define!(@field_default $($field_default)?),)*
+                }
+            }
+
+            // 为每个字段生成 builder 方法
+            $crate::define!(@builder_method $Struct $(, $field: $Fty)*);
+        }
+        impl PartialEq for $Struct {
+            fn eq(&self, other: &Self) -> bool { self.id == other.id }
+        }
+        impl std::hash::Hash for $Struct {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) { self.id.hash(state); }
+        }
+
+        ::paste::paste! {
+            $(
+                #[allow(non_upper_case_globals)]
+                $vis const [< $name:upper >]: &$Struct =
+                    &$Struct::new($name)
+                    $(. $method ( $($args)* ) )*;
+            )*
+
+            $vis const [< $Struct:upper S>]: &[&$Struct] = &[
+                $( [< $name:upper >] , )*
+            ];
+
+            $vis const [< $Struct:upper S_MAP>]: ::phf::Map<&'static str, &'static $Struct> =
+                ::phf::phf_map! {
+                    $( $name => &[< $name:upper >] , )*
+                };
+        }
+    };
+
+    (@field_default $default:expr) => {
+        $default
+    };
+
+    (@field_default) => {
+        Default::default()
+    };
+
+    // 辅助宏：处理所有字段的 builder 方法
+    (@builder_method $Struct:ident $(, $field:ident : $Fty:ty)*) => {
+        $(
+            $crate::define!(@impl_builder $Struct, $field, $Fty);
+        )*
+    };
+
+    // 匹配 Option<T> 类型 - 生成两个方法
+    (@impl_builder $Struct:ident, $field:ident, Option<$inner:ty>) => {
+        // 方法1: 接受 Option<T>，直接设置
+        pub const fn $field(mut self, value: Option<$inner>) -> Self {
+            self.$field = value;
+            self
+        }
+
+        // 方法2: 接受 T，自动包装成 Some
+        ::paste::paste! {
+            pub const fn [< $field:snake >] (mut self, value: $inner) -> Self {
+                self.$field = Some(value);
+                self
+            }
+        }
+    };
+
+    // 匹配非 Option 类型 - 生成普通方法
+    (@impl_builder $Struct:ident, $field:ident, $Fty:ty) => {
+        pub const fn $field(mut self, value: $Fty) -> Self {
+            self.$field = value;
+            self
+        }
+    };
 }

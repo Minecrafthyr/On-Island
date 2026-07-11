@@ -1,0 +1,25 @@
+edition = "2024"
+
+use_small_heuristics = "Max"
+
+fn_single_line = true
+
+group_imports = "StdExternalCrate"
+
+fn_params_layout = "Compressed"
+
+imports_granularity = "Crate"
+
+format_code_in_doc_comments = true
+
+match_arm_indent = false
+
+newline_style = "Unix"
+
+overflow_delimited_expr = true
+
+reorder_impl_items = true
+
+match_arm_blocks = false
+
+tab_spaces = 2

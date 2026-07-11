@@ -1,11 +1,12 @@
 use std::{
-    cmp::{Eq, Ord, PartialEq, PartialOrd},
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+  cmp::{Eq, Ord, PartialEq, PartialOrd},
+  ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use paste::paste;
+use time::Duration;
 pub trait Zero: const Default {
-    const ZERO: Self = Self::default();
+  const ZERO: Self = Self::default();
 }
 
 macro_rules! impl_constructors {
@@ -75,79 +76,77 @@ macro_rules! impl_constructors {
 }
 
 macro_rules! impl_traits {
-    ($type:ty) => {
-        // 加法
-        impl Add for $type {
-            type Output = Self;
+  ($type:ty) => {
+    // 加法
+    impl Add for $type {
+      type Output = Self;
 
-            fn add(self, other: Self) -> Self { Self(self.0 + other.0) }
-        }
+      fn add(self, other: Self) -> Self { Self(self.0 + other.0) }
+    }
 
-        impl AddAssign for $type {
-            fn add_assign(&mut self, other: Self) { self.0 += other.0; }
-        }
+    impl AddAssign for $type {
+      fn add_assign(&mut self, other: Self) { self.0 += other.0; }
+    }
 
-        // 减法
-        impl Sub for $type {
-            type Output = Self;
+    // 减法
+    impl Sub for $type {
+      type Output = Self;
 
-            fn sub(self, other: Self) -> Self { Self(self.0 - other.0) }
-        }
+      fn sub(self, other: Self) -> Self { Self(self.0 - other.0) }
+    }
 
-        impl SubAssign for $type {
-            fn sub_assign(&mut self, other: Self) { self.0 -= other.0; }
-        }
+    impl SubAssign for $type {
+      fn sub_assign(&mut self, other: Self) { self.0 -= other.0; }
+    }
 
-        impl Mul<u64> for $type {
-            type Output = Self;
+    impl Mul<u64> for $type {
+      type Output = Self;
 
-            fn mul(self, rhs: u64) -> Self { Self(self.0 * rhs) }
-        }
+      fn mul(self, rhs: u64) -> Self { Self(self.0 * rhs) }
+    }
 
-        impl MulAssign<u64> for $type {
-            fn mul_assign(&mut self, rhs: u64) { self.0 *= rhs; }
-        }
-        impl Mul<f64> for $type {
-            type Output = Self;
+    impl MulAssign<u64> for $type {
+      fn mul_assign(&mut self, rhs: u64) { self.0 *= rhs; }
+    }
+    impl Mul<f64> for $type {
+      type Output = Self;
 
-            fn mul(self, rhs: f64) -> Self { Self((self.0 as f64 * rhs) as u64) }
-        }
+      fn mul(self, rhs: f64) -> Self { Self((self.0 as f64 * rhs) as u64) }
+    }
 
-        impl MulAssign<f64> for $type {
-            fn mul_assign(&mut self, rhs: f64) { self.0 = (self.0 as f64 * rhs) as u64; }
-        }
+    impl MulAssign<f64> for $type {
+      fn mul_assign(&mut self, rhs: f64) { self.0 = (self.0 as f64 * rhs) as u64; }
+    }
 
-        impl Div<u64> for $type {
-            type Output = Self;
+    impl Div<u64> for $type {
+      type Output = Self;
 
-            fn div(self, rhs: u64) -> Self { Self(self.0 / rhs) }
-        }
+      fn div(self, rhs: u64) -> Self { Self(self.0 / rhs) }
+    }
 
-        impl DivAssign<u64> for $type {
-            fn div_assign(&mut self, rhs: u64) { self.0 /= rhs; }
-        }
+    impl DivAssign<u64> for $type {
+      fn div_assign(&mut self, rhs: u64) { self.0 /= rhs; }
+    }
 
-        // 负运算符（可选）
-        impl std::ops::Neg for $type {
-            type Output = Self;
+    // 负运算符（可选）
+    impl std::ops::Neg for $type {
+      type Output = Self;
 
-            fn neg(self) -> Self { Self(self.0.wrapping_neg()) }
-        }
-        impl Into<u64> for $type {
-            fn into(self) -> u64 { self.0 }
-        }
+      fn neg(self) -> Self { Self(self.0.wrapping_neg()) }
+    }
+    impl Into<u64> for $type {
+      fn into(self) -> u64 { self.0 }
+    }
 
-        impl From<u64> for $type {
-            fn from(value: u64) -> Self { Self(value) }
-        }
+    impl From<u64> for $type {
+      fn from(value: u64) -> Self { Self(value) }
+    }
 
-        impl std::fmt::Display for $type {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.0)
-            }
-        }
-        impl Zero for $type {}
-    };
+    impl std::fmt::Display for $type {
+      fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+    }
+    impl Zero for $type {}
+  };
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -179,9 +178,9 @@ impl_constructors!(Mass, ug: 1, mg: UG_PER_MG, g: UG_PER_G, kg: UG_PER_KG);
 // const US_PER_H: u64 = US_PER_M * 60;
 // impl_constructors!(Duration, us: 1, ms: US_PER_MS, s: US_PER_S, minutes: US_PER_M, hours: US_PER_H);
 
-pub const MS_PER_S: u64 = 1000;
-pub const MS_PER_MIN: u64 = 1000 * 60;
 #[inline]
-pub fn seconds(s: u64) -> u64 { s * MS_PER_S }
+pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
 #[inline]
-pub fn minutes(s: u64) -> u64 { s * MS_PER_MIN }
+pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }
+#[inline]
+pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }

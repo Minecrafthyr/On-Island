@@ -1,39 +1,46 @@
 use std::{
   error::Error,
   fmt::{Display, Write as _},
-  io::Write as _,
   ops::RangeInclusive,
   str::FromStr,
   thread::sleep,
 };
 
 use crossterm::{
-  cursor::{MoveLeft, MoveRight, MoveTo, MoveToRow, position},
+  cursor::{MoveLeft, MoveRight, MoveTo, position},
   event::{Event, KeyCode, read},
   execute, queue,
-  style::Print,
-  terminal::{
-    Clear,
-    ClearType::{FromCursorDown, UntilNewLine},
-  },
+  style::{Attribute::Bold, Print, Stylize},
+  terminal::{Clear, ClearType::UntilNewLine},
 };
 
-use crate::{
-  statics::stdout,
-  utils::{queue_lines, write_lines},
-};
+use crate::io::{NewScreenWriter, ScreenWriter};
 
 pub fn popup_message(msg: impl AsRef<str>) {
-  let out = stdout();
-  execute!(out, MoveTo(0, 0)).unwrap();
-  write_lines(msg);
-  execute!(stdout(), Clear(FromCursorDown)).unwrap();
+  let mut s = NewScreenWriter::new();
+  s.queue_lines(msg);
+  s.end();
   sleep(std::time::Duration::from_millis(200));
-  write_lines("输入任意键继续……");
+  s.write_lines(t!("ui.continue_prompt"));
   loop {
-    match read().unwrap() {
-    Event::Key(key_event) if key_event.is_press() => return,
-    _ => {}
+    if let Event::Key(key_event) = read().unwrap()
+      && key_event.is_press()
+    {
+      return;
+    }
+  }
+}
+pub fn message(msg: impl AsRef<str>) {
+  let mut s = ScreenWriter::new();
+  s.queue_lines(msg);
+  s.end();
+  sleep(std::time::Duration::from_millis(200));
+  s.write_lines(t!("ui.continue_prompt"));
+  loop {
+    if let Event::Key(key_event) = read().unwrap()
+      && key_event.is_press()
+    {
+      return;
     }
   }
 }
@@ -69,12 +76,19 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
   where
     <T as FromStr>::Err: std::fmt::Debug,
   {
-    let out = stdout();
-    let mut s = format!("\n{}", self.prompt);
-    self.default.map(|v| write!(s, "（默认{v}）"));
-    self.range.map(|r| write!(s, "（{}–{}）", r.start, r.last));
-    write!(s, "：").unwrap();
-    write_lines(&s);
+    let mut s = ScreenWriter::new();
+    let mut p = format!("\n{}", self.prompt);
+    self.default.map(|d| write!(p, "{}", t!("ui.get_number.default", default = d)));
+    self.range.map(|r| {
+      p.write_str(&if r.start == r.last {
+        t!("ui.get_number.value", value = r.start)
+      } else {
+        t!("ui.get_number.range", start = r.start, last = r.last)
+      })
+    });
+    write!(p, "：").unwrap();
+    s.queue_lines(&p);
+    s.end();
 
     let mut buf = String::new();
     loop {
@@ -87,18 +101,19 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
         && ch.is_ascii_digit()
       {
         buf.push(ch);
-        execute!(out, MoveRight(1), Print(&buf), Clear(UntilNewLine)).unwrap();
+        execute!(s.out, MoveRight(1), Print(&buf), Clear(UntilNewLine)).unwrap();
       }
       if key_event.code == KeyCode::Backspace {
         buf.pop();
-        execute!(out, MoveLeft(1), Print(&buf), Clear(UntilNewLine)).unwrap();
+        execute!(s.out, MoveLeft(1), Print(&buf), Clear(UntilNewLine)).unwrap();
       }
       if key_event.code == KeyCode::Enter {
         let number = if buf.is_empty() {
           if let Some(v) = self.default {
             v
           } else {
-            write_lines(format!("\n输入为空。{s}"));
+            s.queueln();
+            s.write_lines(t!("ui.get_number.empty", prompt = p));
             continue;
           }
         } else {
@@ -107,14 +122,15 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
         if let Some(r) = self.range
           && !r.contains(&number)
         {
-          write_lines(format!("\n输入无效。{s}"));
+          s.queueln();
+          s.write_lines(t!("ui.get_number.invalid", prompt = p));
           buf.clear();
           continue;
         }
         if let Some(c) = self.check
           && let Some(f) = c(number)
         {
-          write_lines(format!("\n{f}{s}"));
+          s.write_lines(format!("\n{f}{p}"));
           buf.clear();
           continue;
         }
@@ -123,24 +139,80 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
     }
   }
 }
-
+pub type DisplayListEnter = Box<dyn Fn(usize) -> Result<(), Box<dyn Error>>>;
 pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>> {
+  s: ScreenWriter,
   origin: u16,
   title: Option<TitleT>,
-  data: Vec<(StrT, Option<StrT>, Box<dyn FnOnce(usize) -> Result<(), Box<dyn Error>>>)>,
+  data: Vec<(StrT, Option<StrT>, Option<DisplayListEnter>)>,
   selecting: usize,
   flow: bool,
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
   pub fn new(
-    data: Vec<(StrT, Option<StrT>, Box<dyn FnOnce(usize) -> Result<(), Box<dyn Error>>>)>,
+    title: Option<TitleT>, data: Vec<(StrT, Option<StrT>, Option<DisplayListEnter>)>,
   ) -> Self {
-    Self { origin: position().unwrap().1, title: None, data, selecting: 0, flow: true }
+    Self {
+      s: ScreenWriter::new(),
+      origin: position().unwrap().1,
+      title,
+      data,
+      selecting: 0,
+      flow: true,
+    }
+  }
+
+  pub fn title(mut self, title: TitleT) -> Self {
+    self.title = Some(title);
+    self
+  }
+
+  pub fn select_default(mut self, index: usize) -> Self {
+    self.selecting = index;
+    self.recalc_select();
+    self
+  }
+
+  pub fn at(mut self, row: u16) -> Self {
+    self.origin = row;
+    self
+  }
+
+  pub fn no_flow(mut self) -> Self {
+    self.flow = false;
+    self
+  }
+
+  fn recalc_select(&mut self) {
+    if self.flow {
+      self.selecting %= self.data.len();
+    } else {
+      if self.selecting >= self.data.len() {
+        self.selecting = self.data.len() - 1;
+      }
+    }
   }
 
   pub fn run(&mut self) -> bool {
     'io: loop {
-      self.o();
+      queue!(self.s.out, MoveTo(self.origin, 0)).unwrap();
+      if let Some(t) = self.title.as_ref() {
+        self.s.queue_lines(t)
+      }
+      if self.data.is_empty() {
+        self.s.queue_lines(t!("ui.display_list.empty"));
+        self.s.flush();
+        return false;
+      }
+      for (i, (u, s, _)) in self.data.iter().enumerate() {
+        let sel = i == self.selecting;
+        if sel && let Some(s) = s {
+          write!(self.s, "{}", s.as_ref().attribute(Bold)).unwrap();
+        } else {
+          self.s.queue_lines(u)
+        }
+      }
+      self.s.flush();
       loop {
         let Event::Key(key_event) = read().unwrap() else { continue };
         use KeyCode::*;
@@ -165,28 +237,18 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
             self.selecting += 1;
             continue 'io;
           },
-        Enter => {
-          let (_, _, callback) = self.data.swap_remove(self.selecting);
-          match callback(self.selecting) {
-          Ok(_) => return true,
-          Err(e) => popup_message(e.to_string()),
-          }
-          break;
-        }
+        Enter =>
+          if let Some(f) = &self.data[self.selecting].2 {
+            match (f)(self.selecting) {
+            Ok(_) => return true,
+            Err(e) => popup_message(e.to_string()),
+            }
+            break;
+          },
         Esc => return false,
         _ => {}
         }
       }
     }
-  }
-
-  fn o(&self) {
-    queue!(stdout(), MoveToRow(self.origin)).unwrap();
-    self.title.as_ref().map(queue_lines);
-    for (i, (u, s, _)) in self.data.iter().enumerate() {
-      let sel = i == self.selecting;
-      queue_lines(if sel && let Some(s) = s { s } else { u })
-    }
-    stdout().flush().unwrap();
   }
 }

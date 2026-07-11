@@ -1,22 +1,17 @@
 #![feature(const_trait_impl, const_default, derive_const, const_convert, inherent_associated_types)]
 #![allow(incomplete_features)]
-pub mod utils;
-use utils::*;
-pub mod item;
-use item::*;
-pub mod location;
-use location::*;
+
+use crate::{game::Game, utils::RawModeGuard};
 pub mod attribute;
-use attribute::*;
-pub mod player;
-use player::*;
-pub mod game;
-use game::*;
 pub mod crafting;
-pub mod effect;
-pub mod statics;
+pub mod game;
+pub mod io;
+pub mod item;
+pub mod location;
+pub mod player;
 pub mod ui;
 pub mod units;
+pub mod utils;
 
 #[macro_use]
 extern crate rust_i18n;

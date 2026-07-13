@@ -10,12 +10,8 @@ use strum::IntoEnumIterator;
 use time::Duration;
 
 use crate::{
-  attribute::Attribute,
-  io::NewScreenWriter,
-  location::Locations,
-  player::Player,
-  ui::NumberRequester,
-  utils::NameAndDesc,
+  attribute::Attribute, io::NewScreenWriter, location::Locations, player::Player,
+  ui::NumberRequester, utils::NameAndDesc,
 };
 
 pub mod craft;
@@ -47,7 +43,8 @@ impl Game {
     g
   }
 
-  pub fn tick_ms(&mut self) {
+  /// ms
+  pub fn tick(&mut self) {
     self.time += Duration::milliseconds(1);
 
     self.player.tick(1.0);
@@ -65,6 +62,26 @@ impl Game {
     for ld in &mut self.locations.0 {
       ld.tick(self.time, &mut self.rng);
     }
+  }
+
+  pub fn time_pass(&mut self, time: Duration) {
+    if time.is_zero() {
+      return;
+    }
+    for _ in 0..=time.whole_milliseconds() {
+      self.tick();
+    }
+  }
+
+  pub fn action_time_pass(&mut self, time: Duration, activity: f64) {
+    let mut progress = Duration::ZERO;
+    self.player.activity = activity;
+    while progress < time {
+      self.tick();
+      let step = Duration::MILLISECOND * self.player.efficiency();
+      progress += step;
+    }
+    self.player.activity = 1.0;
   }
 
   fn render(&mut self) {
@@ -118,25 +135,5 @@ impl Game {
       return;
     };
     self.time_pass(Duration::seconds(s));
-  }
-
-  pub fn time_pass(&mut self, time: Duration) {
-    if time.is_zero() {
-      return;
-    }
-    for _ in 0..=time.whole_milliseconds() {
-      self.tick_ms();
-    }
-  }
-
-  pub fn action_time_pass(&mut self, time: Duration, activity: f64) {
-    let mut progress = Duration::ZERO;
-    self.player.activity = activity;
-    while progress < time {
-      self.tick_ms();
-      let step = Duration::MILLISECOND * self.player.efficiency();
-      progress += step;
-    }
-    self.player.activity = 1.0;
   }
 }

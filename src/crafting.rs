@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use time::Duration;
 
-use crate::item::{Item, ItemDefStack, ItemDefStacks, ItemStacks};
+use crate::item::{Item, ItemDefStacks, ItemStacks};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CraftingRecipe {
@@ -16,13 +16,9 @@ pub struct CraftingRecipe {
 impl CraftingRecipe {
   pub fn name(&self) -> String { t!(self.name_key).into_owned() }
 
-  pub fn inputs_text(&self) -> String {
-    self.inputs.iter().map(ItemDefStack::to_string).join(" + ")
-  }
+  pub fn inputs_text(&self) -> String { self.inputs.iter().map(ToString::to_string).join(" + ") }
 
-  pub fn outputs_text(&self) -> String {
-    self.outputs.iter().map(ItemDefStack::to_string).join(" + ")
-  }
+  pub fn outputs_text(&self) -> String { self.outputs.iter().map(ToString::to_string).join(" + ") }
 
   pub fn can_apply(&self, inventory: &ItemStacks) -> bool {
     self.inputs.iter().all(|ids| inventory.count_of(Item::new(ids.item)) >= ids.count)

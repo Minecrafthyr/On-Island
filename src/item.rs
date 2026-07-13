@@ -141,7 +141,7 @@ const impl From<&'static [ItemDefStack]> for ItemDefStacks {
 }
 const impl<const S: usize> From<&'static [(&'static ItemDef, u64); S]> for ItemDefStacks {
   fn from(value: &'static [(&'static ItemDef, u64); S]) -> Self {
-    Self(unsafe { transmute((value, S)) })
+    Self(unsafe { transmute((value, S as u64)) })
   }
 }
 const impl<const S: usize> From<[(&'static ItemDef, u64); S]> for ItemDefStacks {
@@ -193,7 +193,7 @@ impl ItemStacks {
     let Some(i) = self.iter_mut().position(|ei| ei.item == item) else { return };
     self.0[i].count = self.0[i].count.saturating_sub(count);
     if self.0[i].count == 0 {
-      self.0.remove(i);
+      self.0.swap_remove(i);
     }
   }
 }

@@ -134,8 +134,8 @@ macro_rules! impl_traits {
 
       fn neg(self) -> Self { Self(self.0.wrapping_neg()) }
     }
-    impl Into<u64> for $type {
-      fn into(self) -> u64 { self.0 }
+    impl From<$type> for u64 {
+      fn from(value: $type) -> Self { value.0 }
     }
 
     impl From<u64> for $type {
@@ -184,3 +184,5 @@ pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
 pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }
 #[inline]
 pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }
+#[inline]
+pub const fn days(days: i64) -> Duration { Duration::days(days) }

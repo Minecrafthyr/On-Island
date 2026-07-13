@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use super::*;
 
@@ -13,18 +12,6 @@ pub trait NameAndDesc {
   }
 }
 
-pub struct RawModeGuard;
-
-impl RawModeGuard {
-  pub fn new() -> std::io::Result<Self> {
-    enable_raw_mode()?;
-    Ok(Self)
-  }
-}
-
-impl Drop for RawModeGuard {
-  fn drop(&mut self) { let _ = disable_raw_mode(); }
-}
 #[macro_export]
 macro_rules! define {
   (

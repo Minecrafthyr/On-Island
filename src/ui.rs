@@ -241,7 +241,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
           if let Some(f) = &self.data[self.selecting].2 {
             match (f)(self.selecting) {
             Ok(_) => return true,
-            Err(e) => popup_message(e.to_string()),
+            Err(e) => message(e.to_string()),
             }
             break;
           },

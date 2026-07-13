@@ -51,7 +51,7 @@ impl Game {
     }
     item_stack.count -= 1;
     if item_stack.count == 0 {
-      self.player.inventory.remove(inventory_index);
+      self.player.inventory.swap_remove(inventory_index);
     }
     self.player.recalc_volume_and_size();
   }

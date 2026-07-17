@@ -1,9 +1,15 @@
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
+use strum::IntoEnumIterator;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+use crate::{
+  units::{DurationDisplay, hours, seconds},
+  utils::{DetailedDisplay, NameAndDesc},
+};
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum AttributeValue {
   Dur(Duration),
   Float(f64),
@@ -11,23 +17,34 @@ pub enum AttributeValue {
 
 impl AttributeValue {
   pub fn positive_signed(&self) -> String {
-    let mut r = if match self {
+    if match self {
     Self::Dur(duration) => duration.is_positive(),
     Self::Float(float) => float.is_sign_positive(),
     } {
-      String::from("+")
+      format!("+{self}")
     } else {
-      String::new()
-    };
-    write!(r, "{self}").unwrap();
-    r
+      self.to_string()
+    }
   }
 }
 impl Display for AttributeValue {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-    Self::Dur(duration) => write!(f, "{duration}"),
-    Self::Float(float) => write!(f, "{float}"),
+    Self::Dur(duration) => {
+      write!(f, "{}", DurationDisplay(*duration))
+    }
+    Self::Float(float) => write!(f, "{:2}%", float * 100.0),
+    }
+  }
+}
+impl Display for DetailedDisplay<AttributeValue> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    use AttributeValue::*;
+    match self.0 {
+    Dur(duration) => {
+      write!(f, "{}", DurationDisplay(duration))
+    }
+    Float(float) => write!(f, "{:3}%", float * 100.0),
     }
   }
 }
@@ -40,7 +57,7 @@ impl From<f64> for AttributeValue {
   fn from(f: f64) -> Self { Self::Float(f) }
 }
 
-#[derive(Debug, EnumIter, EnumCount, Clone, Copy, PartialEq, Eq, EnumString, IntoStaticStr)]
+#[derive(EnumIter, EnumCount, Clone, Copy, PartialEq, Eq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum Attribute {
   Health,
@@ -49,26 +66,29 @@ pub enum Attribute {
 }
 pub use Attribute::*;
 
-use crate::{
-  units::{hours, seconds},
-  utils::NameAndDesc,
-};
-
 impl NameAndDesc for Attribute {
   const PREFIX: &str = "attribute";
 
   fn get_id(&self) -> &str { self.into() }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Attributes {
   pub health: f64,
   pub energy: Duration,
   pub water: Duration,
 }
+impl Display for Attributes {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    for attr in Attribute::iter() {
+      f.write_str(&t!("game.stats", name = attr.name(), value = self.get(attr)))?;
+    }
+    Ok(())
+  }
+}
 
 // 通用的属性修改器
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct AttributeModifier {
   pub attribute: Attribute,
   pub value: AttributeValue,
@@ -79,25 +99,24 @@ impl Display for AttributeModifier {
     write!(f, "{}{}", self.attribute.name(), self.value)
   }
 }
-
 impl AttributeModifier {
   pub fn new(attribute: Attribute, value: impl Into<AttributeValue>) -> Self {
     Self { attribute, value: value.into() }
   }
 
   pub fn apply(&self, attributes: &mut Attributes) {
-    match (self.attribute, &self.value) {
+    match (self.attribute, self.value) {
     (Attribute::Health, AttributeValue::Float(v)) => {
-      attributes.health = *v;
+      attributes.health = v;
     }
     (Attribute::Energy, AttributeValue::Dur(v)) => {
-      attributes.energy = *v;
+      attributes.energy = v;
     }
     (Attribute::Energy, AttributeValue::Float(v)) => {
       attributes.energy = seconds(v.round() as i64);
     }
     (Attribute::Water, AttributeValue::Dur(v)) => {
-      attributes.water = *v;
+      attributes.water = v;
     }
     (Attribute::Water, AttributeValue::Float(v)) => {
       attributes.water = seconds(v.round() as i64);
@@ -117,7 +136,11 @@ impl Default for Attributes {
 }
 
 impl Attributes {
-  pub const fn new() -> Self { Self { health: 1.0, energy: hours(72), water: hours(72) } }
+  pub fn iter(&self) -> impl Iterator<Item = AttributeValue> {
+    Attribute::iter().map(|attr| self.get(attr))
+  }
+
+  pub fn new() -> Self { Self { health: 1.0, energy: hours(72), water: hours(72) } }
 
   pub fn get(&self, attribute: Attribute) -> AttributeValue {
     match attribute {

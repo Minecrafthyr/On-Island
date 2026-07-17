@@ -7,18 +7,17 @@ use std::{
 
 use time::Duration;
 
-use super::*;
 use crate::{
   attribute::{
     Attribute::{Energy, Water},
     AttributeModifier,
     AttributeValue::Dur,
   },
+  define,
   units::*,
   utils::NameAndDesc,
 };
 define!(
-  #[derive(Debug)]
   pub struct ItemDef {
     pub id: &'static str,
     pub volume: Volume,
@@ -47,7 +46,7 @@ impl NameAndDesc for ItemDef {
   fn get_id(&self) -> &str { self.id }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Hash)]
 pub struct Item {
   pub def: &'static ItemDef,
 }
@@ -80,7 +79,7 @@ const impl From<&'static ItemDef> for Item {
   fn from(value: &'static ItemDef) -> Self { Self { def: value } }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Hash)]
 pub struct ItemStack {
   pub item: Item,
   pub count: u64,
@@ -107,7 +106,7 @@ const impl From<ItemDefStack> for ItemStack {
   fn from(value: ItemDefStack) -> Self { Self { item: Item::new(value.item), count: value.count } }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct ItemDefStack {
   pub item: &'static ItemDef,
   pub count: u64,
@@ -124,7 +123,7 @@ impl Display for ItemDefStack {
     write!(f, "{} ×{}", Item::new(self.item).name(), self.count)
   }
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 #[derive_const(Default)]
 pub struct ItemDefStacks(pub &'static [ItemDefStack]);
 const impl Deref for ItemDefStacks {
@@ -148,7 +147,7 @@ const impl<const S: usize> From<[(&'static ItemDef, u64); S]> for ItemDefStacks 
   fn from(value: [(&'static ItemDef, u64); S]) -> Self { Self(unsafe { transmute((&value, S)) }) }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ItemStacks(pub Vec<ItemStack>);
 const impl Deref for ItemStacks {
   type Target = Vec<ItemStack>;

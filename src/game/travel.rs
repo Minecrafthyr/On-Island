@@ -8,10 +8,9 @@ impl Game {
     }
 
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("action.travel.title"));
-
+    s.lines(t!("action.travel.title"));
     for (i, (location, time)) in options.iter().enumerate() {
-      s.queue_lines(t!(
+      s.lines(t!(
         "action.travel.entry",
         index = i,
         name = location.name(),

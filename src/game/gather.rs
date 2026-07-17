@@ -1,22 +1,24 @@
 use rand::RngExt;
 use time::Duration;
 
-use super::*;
 use crate::{
   game::Game,
+  io::NewScreenWriter,
   item::{Item, ItemStacks, RAW_FISH, TREE},
-  ui::NumberRequester,
+  ui::{NumberRequester, popup_message},
+  utils::NameAndDesc,
 };
 impl Game {
   pub fn gather(&mut self) {
     let location_data = &self.locations[self.player.location];
     if location_data.gather_stacks.is_empty() {
+      popup_message("没有可以采集的东西！");
       return;
     }
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("action.gather.title"));
+    s.lines(t!("action.gather.title"));
     for (i, item_stack) in location_data.gather_stacks.iter().enumerate() {
-      s.queue_lines(t!(
+      s.lines(t!(
         "action.gather.entry",
         index = i,
         name = item_stack.item.name(),

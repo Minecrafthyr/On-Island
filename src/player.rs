@@ -135,13 +135,8 @@ impl Player {
     }
     let weight = item.weight.as_kg_f64().max(0.0);
 
-    let (base_time, base_activity) = match weight {
-    w if w < 0.5 => (0.5, 1.2),
-    w if w < 5.0 => (1.0, 1.8),
-    w if w < 20.0 => (1.5, 2.5),
-    w if w < 50.0 => (2.5, 4.0),
-    _ => (4.0, 6.0),
-    };
+    let base_time = weight * 0.1 + 0.6;
+    let base_activity = weight * 0.1 + 1.2;
 
     let weight_factor = if weight > 0.0 { 1.0 + (weight / 10.0).ln().max(0.0) * 0.1 } else { 1.0 };
 

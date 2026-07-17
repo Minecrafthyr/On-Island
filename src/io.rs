@@ -18,29 +18,28 @@ pub struct ScreenWriter {
   pub out: Stdout,
 }
 impl Default for ScreenWriter {
-    fn default() -> Self {
-        Self::new()
-    }
+  fn default() -> Self { Self::new() }
 }
 
 impl ScreenWriter {
   pub fn new() -> Self { Self { out: stdout() } }
 
-  pub fn queue_lines(&mut self, s: impl AsRef<str>) { self.write_str(s.as_ref()).unwrap() }
-
-  pub fn write_lines(&mut self, s: impl AsRef<str>) {
-    self.queue_lines(s);
-    self.out.flush().unwrap();
+  pub fn lines(&mut self, s: impl AsRef<str>) -> &mut Self {
+    self.write_str(s.as_ref()).unwrap();
+    self
   }
 
-  pub fn queueln(&mut self) { queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).unwrap(); }
+  pub fn endl(&mut self) -> &mut Self {
+    queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).unwrap();
+    self
+  }
+
+  pub fn flush(&mut self) { self.out.flush().unwrap() }
 
   pub fn end(&mut self) {
     queue!(self.out, Clear(FromCursorDown)).unwrap();
     self.flush();
   }
-
-  pub fn flush(&mut self) { self.out.flush().unwrap() }
 }
 impl std::fmt::Write for ScreenWriter {
   fn write_str(&mut self, s: &str) -> std::fmt::Result {
@@ -56,9 +55,7 @@ pub struct NewScreenWriter {
   s: ScreenWriter,
 }
 impl Default for NewScreenWriter {
-    fn default() -> Self {
-        Self::new()
-    }
+  fn default() -> Self { Self::new() }
 }
 
 impl NewScreenWriter {

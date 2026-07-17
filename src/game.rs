@@ -27,20 +27,16 @@ pub struct Game {
   pub player: Player,
 }
 
-impl Default for Game {
-  fn default() -> Self { Self::new() }
-}
-
 impl Game {
-  pub fn new() -> Self {
+  pub fn new() -> std::io::Result<Self> {
     let g = Game {
       rng: rand::rng(),
       time: Duration::ZERO,
       locations: Locations::new(),
       player: Player::new(),
     };
-    execute!(stdout(), EnterAlternateScreen).unwrap();
-    g
+    execute!(stdout(), EnterAlternateScreen)?;
+    Ok(g)
   }
 
   /// ms
@@ -86,19 +82,16 @@ impl Game {
 
   fn render(&mut self) {
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("game.title"));
-    s.queueln();
+    s.lines(t!("game.title")).endl();
     for attr in Attribute::iter() {
-      s.queue_lines(t!("game.stats", name = attr.name(), value = self.player.attrs.get(attr)));
+      s.lines(t!("game.stats", name = attr.name(), value = self.player.attrs.get(attr)));
     }
-    s.queue_lines(t!("game.status_line", location = self.player.location.name()));
-    s.end();
+    s.lines(t!("game.status_line", location = self.player.location.name())).end();
   }
 
   pub fn end_game(&mut self, message: impl Display) {
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("game.over", message = message));
-    s.end();
+    s.lines(t!("game.over", message = message)).end();
     sleep(std::time::Duration::from_secs(3));
 
     execute!(s.out, LeaveAlternateScreen).unwrap();
@@ -107,7 +100,7 @@ impl Game {
     std::process::exit(0);
   }
 
-  pub fn run(&mut self) {
+  pub fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
     loop {
       self.render();
       match read().unwrap() {

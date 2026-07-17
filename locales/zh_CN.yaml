@@ -66,7 +66,7 @@ action:
     choose: 选择要拾取的物品编号
     how_many: 拾取多少？
     remaining: 你无法拾取剩下的%{count}个物品！
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}，%{activity}×活动)\n"
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动)\n"
   gather:
     title: 有以下物品可供采集：
     choose: 选择要采集的物品编号
@@ -81,12 +81,12 @@ action:
   use_item:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}，%{activity}×活动) %{attrs}\n- %{description}\n"
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) %{attrs}\n- %{description}\n"
   craft:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
     how_many: 制作多少次？
-    entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}，%{activity}×活动)\n"
+    entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)\n"
     none: 你当前没有足够的材料来进行任何合成。
 crafting:
   dry_tree_vine:
@@ -100,6 +100,15 @@ crafting:
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}\n"
 ui:
+  dur:
+    w: "周"
+    d: "天"
+    h: "小时"
+    m: "分钟"
+    s: "秒"
+    ms: "毫秒"
+    µs: "微秒"
+    ns: "纳秒"
   get_number:
     default: "（默认%{value}）"
     value: "（只能为%{value}）"

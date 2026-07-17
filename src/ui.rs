@@ -1,7 +1,7 @@
 use std::{
   error::Error,
   fmt::{Display, Write as _},
-  ops::RangeInclusive,
+  ops::{Bound, RangeBounds},
   str::FromStr,
   thread::sleep,
 };
@@ -18,10 +18,9 @@ use crate::io::{NewScreenWriter, ScreenWriter};
 
 pub fn popup_message(msg: impl AsRef<str>) {
   let mut s = NewScreenWriter::new();
-  s.queue_lines(msg);
-  s.end();
+  s.lines(msg).end();
   sleep(std::time::Duration::from_millis(200));
-  s.write_lines(t!("ui.continue_prompt"));
+  s.lines(t!("ui.continue_prompt")).flush();
   loop {
     if let Event::Key(key_event) = read().unwrap()
       && key_event.is_press()
@@ -32,10 +31,9 @@ pub fn popup_message(msg: impl AsRef<str>) {
 }
 pub fn message(msg: impl AsRef<str>) {
   let mut s = ScreenWriter::new();
-  s.queue_lines(msg);
-  s.end();
+  s.lines(msg).end();
   sleep(std::time::Duration::from_millis(200));
-  s.write_lines(t!("ui.continue_prompt"));
+  s.lines(t!("ui.continue_prompt")).flush();
   loop {
     if let Event::Key(key_event) = read().unwrap()
       && key_event.is_press()
@@ -45,20 +43,28 @@ pub fn message(msg: impl AsRef<str>) {
   }
 }
 
-pub struct NumberRequester<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
-{
+pub struct NumberRequester<
+  'a,
+  PromptT: Display,
+  T: std::cmp::PartialOrd + FromStr + Display + Copy,
+  RangeT: RangeBounds<T>,
+> {
   prompt: PromptT,
-  range: Option<std::range::RangeInclusive<T>>,
+  range: Option<RangeT>,
   check: Option<&'a dyn Fn(T) -> Option<String>>,
   default: Option<T>,
 }
-impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
-  NumberRequester<'a, PromptT, T>
+impl<
+  'a,
+  PromptT: Display,
+  T: std::cmp::PartialOrd + FromStr + Display + Copy,
+  RangeT: RangeBounds<T>,
+> NumberRequester<'a, PromptT, T, RangeT>
 {
   pub fn new(prompt: PromptT) -> Self { Self { prompt, range: None, check: None, default: None } }
 
-  pub fn range(mut self, range: RangeInclusive<T>) -> Self {
-    self.range = Some(std::range::RangeInclusive::<T>::from(range));
+  pub fn range(mut self, range: RangeT) -> Self {
+    self.range = Some(range);
     self
   }
 
@@ -79,16 +85,21 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
     let mut s = ScreenWriter::new();
     let mut p = format!("\n{}", self.prompt);
     self.default.map(|d| write!(p, "{}", t!("ui.get_number.default", default = d)));
-    self.range.map(|r| {
-      p.write_str(&if r.start == r.last {
-        t!("ui.get_number.value", value = r.start)
-      } else {
-        t!("ui.get_number.range", start = r.start, last = r.last)
-      })
-    });
+    if let Some(r) = &self.range {
+      let _ = match r.start_bound() {
+      Bound::Included(v) => write!(p, "[{}", v),
+      Bound::Excluded(v) => write!(p, "({}", v),
+      Bound::Unbounded => p.write_str("(-∞"),
+      };
+      let _ = p.write_str(", ");
+      let _ = match r.end_bound() {
+      Bound::Included(v) => write!(p, "{}]", v),
+      Bound::Excluded(v) => write!(p, "{})", v),
+      Bound::Unbounded => p.write_str("+∞)"),
+      };
+    }
     write!(p, "：").unwrap();
-    s.queue_lines(&p);
-    s.end();
+    s.lines(&p).end();
 
     let mut buf = String::new();
     loop {
@@ -112,25 +123,25 @@ impl<'a, PromptT: Display, T: std::cmp::PartialOrd + FromStr + Display + Copy>
           if let Some(v) = self.default {
             v
           } else {
-            s.queueln();
-            s.write_lines(t!("ui.get_number.empty", prompt = p));
+            s.endl().lines(t!("ui.get_number.empty", prompt = p)).flush();
             continue;
           }
         } else {
           buf.parse().unwrap()
         };
-        if let Some(r) = self.range
-          && !r.contains(&number)
-        {
-          s.queueln();
-          s.write_lines(t!("ui.get_number.invalid", prompt = p));
+        if self.range.as_ref().map(|r| !r.contains(&number)).unwrap_or(false) {
+          s.endl().lines(t!("ui.get_number.invalid", prompt = p)).flush();
           buf.clear();
           continue;
         }
         if let Some(c) = self.check
           && let Some(f) = c(number)
         {
-          s.write_lines(format!("\n{f}{p}"));
+          {
+            let this = &mut s;
+            let s = format!("\n{f}{p}");
+            this.lines(s).flush();
+          };
           buf.clear();
           continue;
         }
@@ -197,11 +208,10 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
     'io: loop {
       queue!(self.s.out, MoveTo(self.origin, 0)).unwrap();
       if let Some(t) = self.title.as_ref() {
-        self.s.queue_lines(t)
+        self.s.lines(t);
       }
       if self.data.is_empty() {
-        self.s.queue_lines(t!("ui.display_list.empty"));
-        self.s.flush();
+        self.s.lines(t!("ui.display_list.empty")).flush();
         return false;
       }
       for (i, (u, s, _)) in self.data.iter().enumerate() {
@@ -209,7 +219,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
         if sel && let Some(s) = s {
           write!(self.s, "{}", s.as_ref().attribute(Bold)).unwrap();
         } else {
-          self.s.queue_lines(u)
+          self.s.lines(u);
         }
       }
       self.s.flush();

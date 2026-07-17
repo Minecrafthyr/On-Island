@@ -21,15 +21,15 @@ impl Game {
     }
 
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("action.use_item.title"));
+    s.lines(t!("action.use_item.title"));
     for (i, (inventory_index, item, use_time, activity, attrs)) in options.iter().enumerate() {
-      s.queue_lines(t!(
+      s.lines(t!(
         "action.use_item.entry",
         index = i,
         name = item.name(),
         count = self.player.inventory[*inventory_index].count,
-        duration = use_time,
-        activity = activity,
+        duration = use_time.as_seconds_f64() : {:.2},
+        activity = activity: {:.2},
         attrs = attrs.iter().map(|m| t!("action.use_item.effect", attr = m)).join(" "),
         description = item.description()
       ));

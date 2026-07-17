@@ -14,16 +14,16 @@ impl Game {
     }
 
     let mut s = NewScreenWriter::new();
-    s.queue_lines(&t!("action.craft.title"));
+    s.lines(t!("action.craft.title"));
     for (i, recipe) in options.iter().enumerate() {
-      s.queue_lines(&t!(
+      s.lines(t!(
         "action.craft.entry",
         index = i,
         title = recipe.name(),
         inputs = recipe.inputs_text(),
         outputs = recipe.outputs_text(),
-        duration = recipe.time,
-        activity = recipe.activity
+        duration = recipe.time.as_seconds_f64() : {:.2},
+        activity = recipe.activity: {:.2}
       ));
     }
     s.end();

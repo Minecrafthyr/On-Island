@@ -25,15 +25,15 @@ impl Game {
       .collect();
 
     let mut s = NewScreenWriter::new();
-    s.queue_lines(t!("action.pickup.title"));
+    s.lines(t!("action.pickup.title"));
     for (i, (_, item, count, dur, activity)) in options.iter().enumerate() {
-      s.queue_lines(t!(
+      s.lines(t!(
         "action.pickup.entry",
         index = i,
         name = item.name(),
         count = count,
-        duration = dur,
-        activity = activity
+        duration = dur.as_seconds_f64() : {:.2},
+        activity = activity : {:.2}
       ));
     }
     s.end();

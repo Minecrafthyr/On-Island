@@ -3,7 +3,7 @@ use time::Duration;
 
 use crate::item::{Item, ItemDefStacks, ItemStacks};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct CraftingRecipe {
   pub id: &'static str,
   pub name_key: &'static str,

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-
-use super::*;
+pub struct SimpleDisplay<T>(pub T);
+pub struct DetailedDisplay<T>(pub T);
 
 pub trait NameAndDesc {
   const PREFIX: &str;

@@ -9,7 +9,7 @@ use crate::{
   item::{Item, ItemStack, ItemStacks},
   utils::NameAndDesc,
 };
-#[derive(Debug)]
+
 pub struct RestorationData {
   pub item: Item,
   pub times: RangeInclusive<u64>,
@@ -25,7 +25,7 @@ impl RestorationData {
     Self { item, times, chance, limit, interval, last_time: Duration::ZERO }
   }
 }
-#[derive(Debug)]
+
 pub struct LocationData {
   pub pickup_stacks: ItemStacks,
   pub gather_stacks: ItemStacks,
@@ -50,9 +50,7 @@ impl LocationData {
     }
   }
 }
-#[derive(
-  Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
-)]
+#[derive(Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum Location {
   StrandedShip,
@@ -65,7 +63,6 @@ impl NameAndDesc for Location {
   fn get_id(&self) -> &str { self.into() }
 }
 
-#[derive(Debug)]
 pub struct Locations(pub [LocationData; Location::COUNT]);
 impl Index<Location> for Locations {
   type Output = LocationData;

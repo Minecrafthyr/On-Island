@@ -1,5 +1,4 @@
 use std::{
-  error::Error,
   fmt::{Display, Write as _},
   ops::{Bound, RangeBounds},
   str::FromStr,
@@ -16,10 +15,11 @@ use crossterm::{
 
 use crate::io::{NewScreenWriter, ScreenWriter};
 
+const AVOID_MISTAKE_INPUT_DUR: std::time::Duration = std::time::Duration::from_millis(200);
 pub fn popup_message(msg: impl AsRef<str>) {
   let mut s = NewScreenWriter::new();
   s.lines(msg).end();
-  sleep(std::time::Duration::from_millis(200));
+  sleep(AVOID_MISTAKE_INPUT_DUR);
   s.lines(t!("ui.continue_prompt")).flush();
   loop {
     if let Event::Key(key_event) = read().unwrap()
@@ -32,7 +32,7 @@ pub fn popup_message(msg: impl AsRef<str>) {
 pub fn message(msg: impl AsRef<str>) {
   let mut s = ScreenWriter::new();
   s.lines(msg).end();
-  sleep(std::time::Duration::from_millis(200));
+  sleep(AVOID_MISTAKE_INPUT_DUR);
   s.lines(t!("ui.continue_prompt")).flush();
   loop {
     if let Event::Key(key_event) = read().unwrap()
@@ -150,26 +150,93 @@ impl<
     }
   }
 }
-pub type DisplayListEnter = Box<dyn Fn(usize) -> Result<(), Box<dyn Error>>>;
-pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>> {
+pub struct DataItem<
+  StrT: AsRef<str>,
+  SelectedFn, //FnMut(&StrT) -> StrT
+  EnterFn,    //FnMut(usize) -> Result<ReT, Box<dyn ToString>>
+> {
+  pub text: StrT,
+  pub selected: SelectedFn,
+  pub enter: EnterFn,
+}
+
+pub trait DrawEntries {
+  fn draw_entries(&mut self);
+}
+impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, EnterFn> DrawEntries
+  for DisplayList<TitleT, StrT, SelectedFn, EnterFn>
+{
+  fn draw_entries(&mut self) {
+    for (i, DataItem { text, selected, .. }) in self.data.iter_mut().enumerate() {
+      if i == self.selecting {
+        write!(self.s, "{}", (selected)(text).as_ref().attribute(Bold)).unwrap();
+      } else {
+        self.s.lines(text);
+      }
+    }
+  }
+}
+impl<TitleT: AsRef<str>, StrT: AsRef<str>, EnterFn> DrawEntries
+  for DisplayList<TitleT, StrT, (), EnterFn>
+{
+  fn draw_entries(&mut self) {
+    for DataItem { text, .. } in self.data.iter_mut() {
+      self.s.lines(text);
+    }
+  }
+}
+pub trait Enter {
+  type ReT;
+  fn enter(&mut self) -> Option<Self::ReT>;
+}
+
+impl<
+  ReT,
+  TitleT: AsRef<str>,
+  StrT: AsRef<str>,
+  SelectedFn,
+  EnterFn: FnMut(usize) -> Result<ReT, Box<dyn ToString>>,
+> Enter for DisplayList<TitleT, StrT, SelectedFn, EnterFn>
+{
+  type ReT = ReT;
+
+  fn enter(&mut self) -> Option<ReT> {
+    let f = &mut self.data[self.selecting].enter;
+    match (f)(self.selecting) {
+    Ok(r) => return Some(r),
+    Err(e) => message(e.to_string()),
+    }
+    None
+  }
+}
+impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn> Enter
+  for DisplayList<TitleT, StrT, SelectedFn, ()>
+{
+  type ReT = ();
+
+  fn enter(&mut self) -> Option<()> { None }
+}
+pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn> {
   s: ScreenWriter,
-  origin: u16,
+  origin_row: u16,
   title: Option<TitleT>,
-  data: Vec<(StrT, Option<StrT>, Option<DisplayListEnter>)>,
+  data: Vec<DataItem<StrT, SelectedFn, EnterFn>>,
   selecting: usize,
   flow: bool,
+  indexed: bool,
 }
-impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
-  pub fn new(
-    title: Option<TitleT>, data: Vec<(StrT, Option<StrT>, Option<DisplayListEnter>)>,
-  ) -> Self {
+impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
+  DisplayList<TitleT, StrT, SelectedFn, EnterFn>
+{
+  pub fn new(title: Option<TitleT>, data: Vec<DataItem<StrT, SelectedFn, EnterFn>>) -> Self {
     Self {
       s: ScreenWriter::new(),
-      origin: position().unwrap().1,
+      origin_row: position().unwrap().1,
       title,
       data,
       selecting: 0,
       flow: true,
+      indexed: false,
     }
   }
 
@@ -178,19 +245,9 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
     self
   }
 
-  pub fn select_default(mut self, index: usize) -> Self {
-    self.selecting = index;
-    self.recalc_select();
-    self
-  }
-
-  pub fn at(mut self, row: u16) -> Self {
-    self.origin = row;
-    self
-  }
-
-  pub fn no_flow(mut self) -> Self {
-    self.flow = false;
+  /// Turn on index before display item to select instantly.
+  pub fn indexing(mut self) -> Self {
+    self.indexed = true;
     self
   }
 
@@ -204,24 +261,40 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
     }
   }
 
-  pub fn run(&mut self) -> bool {
+  /// Select index on startup
+  pub fn select_default(mut self, index: usize) -> Self {
+    self.selecting = index;
+    self.recalc_select();
+    self
+  }
+
+  pub fn at(mut self, row: u16) -> Self {
+    self.origin_row = row;
+    self
+  }
+
+  /// Disable flow from max to zero index
+  pub fn no_flow(mut self) -> Self {
+    self.flow = false;
+    self
+  }
+}
+impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
+  DisplayList<TitleT, StrT, SelectedFn, EnterFn>
+where
+  Self: DrawEntries + Enter,
+{
+  pub fn run(&mut self) -> Option<<Self as Enter>::ReT> {
     'io: loop {
-      queue!(self.s.out, MoveTo(self.origin, 0)).unwrap();
+      queue!(self.s.out, MoveTo(self.origin_row, 0)).unwrap();
       if let Some(t) = self.title.as_ref() {
         self.s.lines(t);
       }
       if self.data.is_empty() {
         self.s.lines(t!("ui.display_list.empty")).flush();
-        return false;
+        return None;
       }
-      for (i, (u, s, _)) in self.data.iter().enumerate() {
-        let sel = i == self.selecting;
-        if sel && let Some(s) = s {
-          write!(self.s, "{}", s.as_ref().attribute(Bold)).unwrap();
-        } else {
-          self.s.lines(u);
-        }
-      }
+      self.draw_entries();
       self.s.flush();
       loop {
         let Event::Key(key_event) = read().unwrap() else { continue };
@@ -247,15 +320,13 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>> DisplayList<TitleT, StrT> {
             self.selecting += 1;
             continue 'io;
           },
-        Enter =>
-          if let Some(f) = &self.data[self.selecting].2 {
-            match (f)(self.selecting) {
-            Ok(_) => return true,
-            Err(e) => message(e.to_string()),
-            }
-            break;
-          },
-        Esc => return false,
+        Enter => {
+          if let Some(r) = self.enter() {
+            return Some(r);
+          }
+          break;
+        }
+        Esc => return None,
         _ => {}
         }
       }

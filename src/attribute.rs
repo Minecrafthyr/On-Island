@@ -125,7 +125,7 @@ impl AttributeModifier {
     }
   }
 }
-impl From<(Attribute, AttributeValue)> for AttributeModifier {
+const impl From<(Attribute, AttributeValue)> for AttributeModifier {
   fn from(value: (Attribute, AttributeValue)) -> Self {
     Self { attribute: value.0, value: value.1 }
   }

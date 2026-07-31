@@ -47,7 +47,7 @@ attribute:
     name: 水分
     description: 角色的水分。
 game:
-  title: "=== On Island ==="
+  title: "=== 在岛上 ==="
   stats: "%{name}: %{value}"
   status_line: "位置: %{location}\n[t]旅行 [p]拾取 [g]采集 [c]合成 [u]使用物品 [i]查看物品栏 [r]休息 [q]退出"
   over: "游戏结束！\n%{message}"
@@ -59,35 +59,38 @@ game:
 action:
   inventory:
     title: 物品栏
-    unselected: "%{name} ×%{count} {volume} {weight}"
-    selected: "%{name} ×%{count} {volume} {weight} - %{description}"
+    entry: "%{name} ×%{count} {volume} {weight} - %{description}"
   pickup:
     title: 有以下物品可拾取：
     choose: 选择要拾取的物品编号
     how_many: 拾取多少？
     remaining: 你无法拾取剩下的%{count}个物品！
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动)\n"
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动)"
   gather:
     title: 有以下物品可供采集：
     choose: 选择要采集的物品编号
     how_many: 采集多少？
-    entry: "[%{index}] %{name} ×%{count} - %{description}\n"
+    entry: "[%{index}] %{name} ×%{count} - %{description}"
   rest:
     prompt: 请选择要休息的时间（分钟）
   travel:
     title: 有以下地点可以前往：
-    entry: "[%{index}] %{name} (%{time}) - %{description}\n"
+    entry: "[%{index}] %{name} (%{time}) - %{description}"
     choose: 请选择要前往的地点编号
   use_item:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) %{attrs}\n- %{description}\n"
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) %{attrs} - %{description}"
   craft:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
     how_many: 制作多少次？
-    entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)\n"
-    none: 你当前没有足够的材料来进行任何合成。
+    entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
+    empty: 你当前没有足够的材料来进行任何合成。
+  travel:
+    title: "当前地点：{current_location}\n可以前往以下地点："
+    choose: 请选择要前往的地点
+    entry: "[%{index}] %{name} (%{time}) - %{description}"
 crafting:
   dry_tree_vine:
     name: 烤干树藤
@@ -95,10 +98,6 @@ crafting:
     name: 编织树藤背包
   vine_basket:
     name: 编织树藤筐
-  travel:
-    title: "可以前往以下地点："
-    choose: 请选择要前往的地点
-    entry: "[%{index}] %{name} (%{time}) - %{description}\n"
 ui:
   dur:
     w: "周"
@@ -112,10 +111,9 @@ ui:
   get_number:
     default: "（默认%{value}）"
     value: "（只能为%{value}）"
-    range: "（%{start}–%{last}）"
+    # range: "（%{start}–%{last}）"
     empty: "输入为空。%{prompt}"
     invalid: "输入无效。%{prompt}"
   display_list:
     empty: （空）
   continue_prompt: 输入任意键继续……
-  

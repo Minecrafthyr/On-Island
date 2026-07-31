@@ -1,27 +1,33 @@
-use crate::{game::Game, io::NewScreenWriter, ui::NumberRequester, utils::NameAndDesc};
+use crate::{
+  game::Game,
+  io::NewScreenWriter,
+  ui::{DataItem, DisplayList},
+  utils::NameAndDesc,
+};
 
 impl Game {
   pub fn travel(&mut self) {
     let options = &self.locations[self.player.location].can_go;
-    if options.is_empty() {
-      return;
-    }
-
-    let mut s = NewScreenWriter::new();
-    s.lines(t!("action.travel.title"));
-    for (i, (location, time)) in options.iter().enumerate() {
-      s.lines(t!(
-        "action.travel.entry",
-        index = i,
-        name = location.name(),
-        time = time,
-        description = location.description()
-      ));
-    }
-    s.end();
-    let Some(choice) =
-      NumberRequester::new(t!("action.travel.choose")).range(0..=options.len() - 1).request()
-    else {
+    NewScreenWriter::new();
+    let Some(choice) = DisplayList::new(
+      Some(t!("action.travel.title", current_location = self.player.location.name())),
+      options
+        .iter()
+        .enumerate()
+        .map(|(i, (location, time))| DataItem {
+          text: t!(
+            "action.travel.entry",
+            index = i,
+            name = location.name(),
+            time = time,
+            description = location.description()
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+    )
+    .run() else {
       return;
     };
 

@@ -5,39 +5,33 @@ use crate::{
   game::Game,
   io::NewScreenWriter,
   item::{Item, ItemStacks, RAW_FISH, TREE},
-  ui::{NumberRequester, popup_message},
+  ui::{DataItem, DisplayList, NumberRequester, message},
   utils::NameAndDesc,
 };
 impl Game {
   pub fn gather(&mut self) {
     let location_data = &self.locations[self.player.location];
-    if location_data.gather_stacks.is_empty() {
-      popup_message("没有可以采集的东西！");
-      return;
-    }
-    let mut s = NewScreenWriter::new();
-    s.lines(t!("action.gather.title"));
-    for (i, item_stack) in location_data.gather_stacks.iter().enumerate() {
-      s.lines(t!(
-        "action.gather.entry",
-        index = i,
-        name = item_stack.item.name(),
-        count = item_stack.count,
-        description = item_stack.item.description(),
-      ));
-    }
-    s.end();
-    let Some(choice) = NumberRequester::new(t!("action.gather.choose"))
-      .range(0..=location_data.gather_stacks.len() - 1)
-      .request()
-    else {
-      return;
-    };
-    let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
-      .range(1..=location_data.gather_stacks[choice].count)
-      .default(1)
-      .request()
-    else {
+    NewScreenWriter::new();
+    let Some(choice) = DisplayList::new(
+      Some(t!("action.gather.title")),
+      location_data
+        .gather_stacks
+        .iter()
+        .enumerate()
+        .map(|(i, item_stack)| DataItem {
+          text: t!(
+            "action.gather.entry",
+            index = i,
+            name = item_stack.item.name(),
+            count = item_stack.count,
+            description = item_stack.item.description(),
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+    )
+    .run() else {
       return;
     };
     let item = location_data.gather_stacks[choice].item;
@@ -50,6 +44,14 @@ impl Game {
     "tree" => Some((Duration::minutes(30), 2.0, [(Item::new(TREE), 2)].into())),
     _ => None,
     }) else {
+      message("你无法采集它！");
+      return;
+    };
+    let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
+      .range(1..=location_data.gather_stacks[choice].count)
+      .default(1)
+      .request()
+    else {
       return;
     };
     for _ in 0..count {

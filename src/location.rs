@@ -12,7 +12,7 @@ use crate::{
 
 pub struct RestorationData {
   pub item: Item,
-  pub times: RangeInclusive<u64>,
+  pub attempts: RangeInclusive<u64>,
   pub chance: f64,
   pub limit: u64,
   pub interval: Duration,
@@ -20,9 +20,9 @@ pub struct RestorationData {
 }
 impl RestorationData {
   pub fn new(
-    item: Item, times: RangeInclusive<u64>, chance: f64, limit: u64, interval: Duration,
+    item: Item, attempts: RangeInclusive<u64>, chance: f64, limit: u64, interval: Duration,
   ) -> Self {
-    Self { item, times, chance, limit, interval, last_time: Duration::ZERO }
+    Self { item, attempts, chance, limit, interval, last_time: Duration::ZERO }
   }
 }
 
@@ -38,9 +38,8 @@ impl LocationData {
       let next_time = r.last_time + r.interval;
       if next_time <= time {
         r.last_time = next_time;
-        let times = rng.random_range(r.times.clone());
         let mut count = 0;
-        for _ in 0..times {
+        for _ in 0..rng.random_range(r.attempts.clone()) {
           if rng.random_bool(r.chance) {
             count += 1;
           }
@@ -80,7 +79,7 @@ impl Locations {
     use crate::{item::*, units::*};
     Self([
       LocationData {
-        pickup_stacks: [(BISCUIT, 10), (WATER, 10), (CANVAS_BACKPACK, 1)].into(),
+        pickup_stacks: [(BISCUIT, 10), (WATER_BOTTLE, 10), (CANVAS_BACKPACK, 1)].into(),
         gather_stacks: ItemStacks::new(),
         restore: vec![],
         can_go: vec![(Location::Beach, seconds(30))],

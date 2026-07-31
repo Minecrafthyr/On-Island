@@ -2,7 +2,7 @@ use time::Duration;
 
 use crate::{
   attribute::Attributes,
-  item::{CANVAS_BACKPACK, Item, ItemStack, ItemStacks},
+  item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   units::*,
 };
@@ -30,7 +30,7 @@ impl Player {
       activity: 1.0,
       inventory_volume_used: Volume::ZERO,
       inventory_weight: Mass::ZERO,
-      worn: vec![CANVAS_BACKPACK.into()],
+      worn: vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()],
     }
   }
 

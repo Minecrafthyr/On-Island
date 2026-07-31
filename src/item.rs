@@ -13,33 +13,45 @@ use crate::{
     AttributeModifier,
     AttributeValue::Dur,
   },
-  define,
   units::*,
   utils::NameAndDesc,
 };
-define!(
-  pub struct ItemDef {
-    pub id: &'static str,
-    pub volume: Volume,
-    pub weight: Mass,
-    pub container_size: Volume,
-  },
-  [
-    ("biscuit").volume(mL(100)).weight(g(20)),
-    ("water").volume(mL(501)).weight(g(502)),
-    ("raw_fish").volume(L(1)).weight(g(1200)),
-    ("wood").volume(L(50)).weight(kg(20)),
-    ("tree").volume(L(150)).weight(kg(100)),
-    ("stick").volume(L(1)).weight(g(800)),
-    ("rock").volume(L(150)).weight(kg(100)),
-    ("tree_vine").volume(mL(500)).weight(g(300)),
-    ("dry_tree_vine").volume(mL(400)).weight(g(200)),
-    ("vine_backpack").volume(L(25)).weight(kg(1)).container_size(L(18)),
-    ("vine_basket").volume(L(50)).weight(kg(2)).container_size(L(48)),
-    ("canvas_backpack").volume(L(28)).weight(g(700)).container_size(L(20)),
-  ]
-);
+pub struct PocketDef {
+  pub id: &'static str,
+  pub capacity: Volume,
+  pub max_weight: Mass,
+  pub rigid: bool,
+}
+pub struct Pocket {
+  pub def: &'static PocketDef,
+  pub item_stacks: ItemStacks,
+}
+impl Deref for Pocket {
+  type Target = PocketDef;
 
+  fn deref(&self) -> &Self::Target { self.def }
+}
+pub struct ContainerDef {
+  pub pocket_defs: &'static [PocketDef],
+}
+
+pub struct Container {
+  pub def: &'static ContainerDef,
+  pub pockets: Vec<Pocket>,
+}
+impl Deref for Container {
+  type Target = ContainerDef;
+
+  fn deref(&self) -> &Self::Target { self.def }
+}
+#[derive(Clone, Copy)]
+pub struct UseData {
+  pub dur: Duration,
+  pub activity: f64,
+  pub attrs: &'static [AttributeModifier],
+}
+pub mod data;
+pub use data::*;
 impl NameAndDesc for ItemDef {
   const PREFIX: &str = "item";
 
@@ -53,21 +65,6 @@ pub struct Item {
 
 impl Item {
   pub const fn new(def: &'static ItemDef) -> Self { Self { def } }
-
-  pub fn use_data(&self) -> Option<(Duration, f64, Vec<AttributeModifier>)> {
-    match self.get_id() {
-    "biscuit" => Some((Duration::seconds(5), 1.0, vec![
-      (Energy, Dur(hours(1))).into(),
-      (Water, Dur(hours(-1))).into(),
-    ])),
-    "water" => Some((seconds(5), 1.0, vec![(Water, Dur(hours(2))).into()])),
-    "raw_fish" => Some((Duration::seconds(60), 1.0, vec![
-      (Energy, Dur(hours(2))).into(),
-      (Water, Dur(minutes(50))).into(),
-    ])),
-    _ => None,
-    }
-  }
 }
 
 impl Deref for Item {

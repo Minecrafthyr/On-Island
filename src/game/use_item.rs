@@ -1,6 +1,11 @@
 use itertools::Itertools;
 
-use crate::{game::Game, io::NewScreenWriter, ui::NumberRequester, utils::NameAndDesc};
+use crate::{
+  game::Game,
+  io::NewScreenWriter,
+  ui::{DataItem, DisplayList},
+  utils::NameAndDesc,
+};
 
 impl Game {
   pub fn use_item(&mut self) {
@@ -10,43 +15,43 @@ impl Game {
       .iter()
       .enumerate()
       .filter_map(|(i, item_stack)| {
-        item_stack
-          .item
-          .use_data()
-          .map(|(use_time, activity, attrs)| (i, item_stack.item, use_time, activity, attrs))
+        item_stack.item.use_data.and_then(|ud| Some((i, item_stack, ud)))
       })
       .collect();
     if options.is_empty() {
       return;
     }
-
-    let mut s = NewScreenWriter::new();
-    s.lines(t!("action.use_item.title"));
-    for (i, (inventory_index, item, use_time, activity, attrs)) in options.iter().enumerate() {
-      s.lines(t!(
-        "action.use_item.entry",
-        index = i,
-        name = item.name(),
-        count = self.player.inventory[*inventory_index].count,
-        duration = use_time.as_seconds_f64() : {:.2},
-        activity = activity: {:.2},
-        attrs = attrs.iter().map(|m| t!("action.use_item.effect", attr = m)).join(" "),
-        description = item.description()
-      ));
-    }
-    s.end();
-
-    let Some(choice) =
-      NumberRequester::new(t!("action.use_item.choose")).range(0..=options.len() - 1).request()
-    else {
+    NewScreenWriter::new();
+    let Some(choice) = DisplayList::new(
+      Some(t!("action.use_item.title")),
+      options
+        .iter()
+        .enumerate()
+        .map(|(i, (_inventory_index, item_stack, use_data))| DataItem {
+          text: t!(
+            "action.use_item.entry",
+            index = i,
+            name = item_stack.item.name(),
+            count = item_stack.count,
+            duration = use_data.dur.as_seconds_f64() : {:.2},
+            activity = use_data.activity: {:.2},
+            attrs = use_data.attrs.iter().map(|m| t!("action.use_item.effect", attr = m)).join(" "),
+            description = item_stack.item.description()
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+    )
+    .run() else {
       return;
     };
 
-    let (inventory_index, _, use_time, activity, attrs) = options[choice].clone();
-    self.action_time_pass(use_time, activity);
+    let (inventory_index, _, use_data) = options[choice].clone();
+    self.action_time_pass(use_data.dur, use_data.activity);
 
     let item_stack = &mut self.player.inventory[inventory_index];
-    for modifier in attrs {
+    for modifier in use_data.attrs {
       self.player.attrs.apply_modifier(&modifier);
     }
     item_stack.count -= 1;

@@ -165,6 +165,8 @@ impl_constructors!(Mass, ug: 1, mg: UG_PER_MG, g: UG_PER_G, kg: UG_PER_KG);
 // impl_constructors!(Duration, us: 1, ms: US_PER_MS, s: US_PER_S, minutes: US_PER_M, hours: US_PER_H);
 
 #[inline]
+pub const fn milliseconds(milliseconds: i64) -> Duration { Duration::milliseconds(milliseconds) }
+#[inline]
 pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
 #[inline]
 pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }

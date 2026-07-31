@@ -2,37 +2,36 @@ use crate::{
   crafting::{CRAFTING_RECIPES, CraftingRecipe},
   game::Game,
   io::NewScreenWriter,
-  ui::{NumberRequester, popup_message},
+  ui::{DataItem, DisplayList, NumberRequester},
 };
 impl Game {
   pub fn craft(&mut self) {
     let options: Vec<_> =
       CRAFTING_RECIPES.iter().filter(|recipe| recipe.can_apply(&self.player.inventory)).collect();
-    if options.is_empty() {
-      popup_message(t!("action.craft.none"));
-      return;
-    }
-
-    let mut s = NewScreenWriter::new();
-    s.lines(t!("action.craft.title"));
-    for (i, recipe) in options.iter().enumerate() {
-      s.lines(t!(
-        "action.craft.entry",
-        index = i,
-        title = recipe.name(),
-        inputs = recipe.inputs_text(),
-        outputs = recipe.outputs_text(),
-        duration = recipe.time.as_seconds_f64() : {:.2},
-        activity = recipe.activity: {:.2}
-      ));
-    }
-    s.end();
-    let Some(choice) =
-      NumberRequester::new(t!("action.craft.choose")).range(0..=options.len() - 1).request()
-    else {
+    NewScreenWriter::new();
+    let Some(choice) = DisplayList::new(
+      Some(t!("action.craft.title")),
+      options
+        .iter()
+        .enumerate()
+        .map(|(i, recipe)| DataItem {
+          text: t!(
+            "action.craft.entry",
+            index = i,
+            title = recipe.name(),
+            inputs = recipe.inputs_text(),
+            outputs = recipe.outputs_text(),
+            duration = recipe.time.as_seconds_f64() : {:.2},
+            activity = recipe.activity: {:.2}
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+    )
+    .run() else {
       return;
     };
-
     let recipe = options[choice];
     let Some(batch_count) = NumberRequester::new(t!("action.craft.how_many"))
       .range(1..=recipe.max_batch_count(&self.player.inventory))

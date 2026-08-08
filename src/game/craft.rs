@@ -8,8 +8,8 @@ impl Game {
   pub fn craft(&mut self) {
     let options: Vec<_> =
       CRAFTING_RECIPES.iter().filter(|recipe| recipe.can_apply(&self.player.inventory)).collect();
-    NewScreenWriter::new();
-    let Some(choice) = DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.craft.title")),
       options
         .iter()
@@ -28,8 +28,7 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )
-    .run() else {
+    )) else {
       return;
     };
     let recipe = options[choice];

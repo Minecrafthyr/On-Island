@@ -1,5 +1,5 @@
 use std::{
-  fmt::Write,
+  fmt::Display,
   io::{Stdout, Write as _, stdout},
   ops::{Deref, DerefMut},
 };
@@ -20,12 +20,20 @@ pub struct ScreenWriter {
 impl Default for ScreenWriter {
   fn default() -> Self { Self::new() }
 }
+pub const AVOID_MISTAKE_INPUT_DUR: std::time::Duration = std::time::Duration::from_millis(400);
 
 impl ScreenWriter {
   pub fn new() -> Self { Self { out: stdout() } }
 
+  pub fn line(&mut self, line: impl Display) -> &mut Self {
+    write!(self.out, "{line}").unwrap();
+    self.endl()
+  }
+
   pub fn lines(&mut self, s: impl AsRef<str>) -> &mut Self {
-    self.write_str(s.as_ref()).unwrap();
+    for line in s.as_ref().lines() {
+      self.line(line);
+    }
     self
   }
 
@@ -43,9 +51,12 @@ impl ScreenWriter {
 }
 impl std::fmt::Write for ScreenWriter {
   fn write_str(&mut self, s: &str) -> std::fmt::Result {
-    for line in s.lines() {
-      queue!(self.out, Print(line), Clear(UntilNewLine), MoveToNextLine(1))
-        .map_err(|_| std::fmt::Error)?;
+    let mut iter = s.lines().peekable();
+    while let Some(line) = iter.next() {
+      queue!(self.out, Print(line)).map_err(|_| std::fmt::Error)?;
+      if iter.peek().is_some() {
+        queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).map_err(|_| std::fmt::Error)?;
+      }
     }
     Ok(())
   }

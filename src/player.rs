@@ -1,14 +1,15 @@
 use time::Duration;
 
 use crate::{
-  attribute::Attributes,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   units::*,
 };
 
 pub struct Player {
-  pub attrs: Attributes,
+  pub health: f64,
+  pub energy: Duration,
+  pub water: Duration,
   pub location: Location,
   pub inventory: ItemStacks,
   pub activity: f64,
@@ -24,7 +25,9 @@ impl Default for Player {
 impl Player {
   pub fn new() -> Self {
     Player {
-      attrs: Attributes::new(),
+      health: 1.0,
+      energy: hours(72),
+      water: hours(72),
       location: Location::StrandedShip,
       inventory: ItemStacks::new(),
       activity: 1.0,
@@ -36,36 +39,33 @@ impl Player {
 
   pub fn efficiency(&self) -> f64 {
     let mut base = 1.0;
-    if self.attrs.energy < Duration::hours(24) {
-      base *= self.attrs.energy.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
+    if self.energy < Duration::hours(24) {
+      base *= self.energy.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
     }
-    if self.attrs.water < Duration::hours(24) {
-      base *= self.attrs.water.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
+    if self.water < Duration::hours(24) {
+      base *= self.water.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
     }
-    if self.attrs.health < 0.5 {
-      base *= self.attrs.health / 0.5;
+    if self.health < 0.5 {
+      base *= self.health / 0.5;
     }
     base
   }
 
   pub fn tick(&mut self, activity: f64) {
     let dur = Duration::MILLISECOND * activity;
-    self.attrs.energy -= dur;
-    self.attrs.water -= dur;
+    self.energy -= dur;
+    self.water -= dur;
 
-    if self.attrs.energy <= Duration::hours(24) {
-      self.attrs.health -= 0.001;
+    if self.energy <= Duration::hours(24) {
+      self.health -= 0.001;
     }
-    if self.attrs.water <= Duration::hours(24) {
-      self.attrs.health -= 0.001;
+    if self.water <= Duration::hours(24) {
+      self.health -= 0.001;
     }
 
-    if self.attrs.energy > Duration::hours(48)
-      && self.attrs.water > Duration::hours(48)
-      && self.attrs.health < 1.0
-    {
-      self.attrs.energy -= dur;
-      self.attrs.health += 0.001;
+    if self.energy > Duration::hours(48) && self.water > Duration::hours(48) && self.health < 1.0 {
+      self.energy -= dur;
+      self.health += 0.001;
     }
   }
 
@@ -145,5 +145,26 @@ impl Player {
 
     let time_seconds = base_time * weight_factor * self.efficiency();
     Some((Duration::seconds_f64(time_seconds), activity))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn new_player_starts_with_full_stats() {
+    let player = Player::new();
+    assert!((player.health - 1.0).abs() < f64::EPSILON);
+    assert_eq!(player.energy, hours(72));
+    assert_eq!(player.water, hours(72));
+  }
+
+  #[test]
+  fn tick_decreases_resources() {
+    let mut player = Player::new();
+    player.tick(1.0);
+    assert!(player.energy < hours(72));
+    assert!(player.water < hours(72));
   }
 }

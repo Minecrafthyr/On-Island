@@ -14,7 +14,7 @@ pub trait NameAndDesc {
 
 #[macro_export]
 macro_rules! builder_method {
-  ($Struct:ident, $field:ident, Option<$inner:ty>) => {
+  ($field:ident, Option<$inner:ty>) => {
     ::paste::paste! {
       pub const fn [< $field _option >](mut self, value: Option<$inner>) -> Self {
         self.$field = value;
@@ -27,7 +27,7 @@ macro_rules! builder_method {
     }
   };
 
-  ($Struct:ident, $field:ident, $Fty:ty) => {
+  ($field:ident, $Fty:ty) => {
     pub const fn $field(mut self, value: $Fty) -> Self {
       self.$field = value;
       self

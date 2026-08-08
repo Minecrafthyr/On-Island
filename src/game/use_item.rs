@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::{
   game::Game,
   io::NewScreenWriter,
@@ -14,15 +12,13 @@ impl Game {
       .inventory
       .iter()
       .enumerate()
-      .filter_map(|(i, item_stack)| {
-        item_stack.item.use_data.and_then(|ud| Some((i, item_stack, ud)))
-      })
+      .filter_map(|(i, item_stack)| item_stack.item.use_data.map(|ud| (i, item_stack, ud)))
       .collect();
     if options.is_empty() {
       return;
     }
-    NewScreenWriter::new();
-    let Some(choice) = DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.use_item.title")),
       options
         .iter()
@@ -35,28 +31,26 @@ impl Game {
             count = item_stack.count,
             duration = use_data.dur.as_seconds_f64() : {:.2},
             activity = use_data.activity: {:.2},
-            attrs = use_data.attrs.iter().map(|m| t!("action.use_item.effect", attr = m)).join(" "),
             description = item_stack.item.description()
           ),
           selected: (),
           enter: |i| Ok(i),
         })
         .collect(),
-    )
-    .run() else {
+    )) else {
       return;
     };
 
-    let (inventory_index, _, use_data) = options[choice].clone();
-    self.action_time_pass(use_data.dur, use_data.activity);
+    let (inventory_index, _, use_data) = options[choice];
+    self.action_time_pass(use_data.dur, self.player.activity);
 
-    let item_stack = &mut self.player.inventory[inventory_index];
-    for modifier in use_data.attrs {
-      self.player.attrs.apply_modifier(&modifier);
-    }
-    item_stack.count -= 1;
-    if item_stack.count == 0 {
+    let count = self.player.inventory[inventory_index].count;
+    (use_data.on_use)(&mut self.player);
+    let new_count = count.saturating_sub(1);
+    if new_count == 0 {
       self.player.inventory.swap_remove(inventory_index);
+    } else {
+      self.player.inventory[inventory_index].count = new_count;
     }
     self.player.recalc_volume_and_size();
   }

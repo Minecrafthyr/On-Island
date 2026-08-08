@@ -1,8 +1,5 @@
-use crate::{
-  attribute::{AttributeValue::*, *},
-  item::UseData,
-  units::*,
-};
+use crate::{builder_method, item::UseData, units::*};
+#[derive(Clone)]
 pub struct ItemDef {
   pub id: &'static str,
   pub volume: Volume,
@@ -11,18 +8,22 @@ pub struct ItemDef {
   pub use_data: Option<UseData>,
 }
 impl ItemDef {
+  builder_method!(id, &'static str);
+
+  builder_method!(volume, Volume);
+
+  builder_method!(weight, Mass);
+
+  builder_method!(container_size, Volume);
+
+  builder_method!(use_data, Option<UseData>);
+
   pub const fn new(id: &'static str, volume: Volume, weight: Mass) -> Self {
     Self { id, volume, weight, container_size: Default::default(), use_data: None }
   }
 
-  pub const fn container_size(mut self, value: Volume) -> Self {
-    self.container_size = value;
-    self
-  }
-
-  pub const fn use_data(mut self, use_data: UseData) -> Self {
-    self.use_data = Some(use_data);
-    self
+  pub const fn with_id(id: &'static str) -> Self {
+    Self::new(id, Default::default(), Default::default())
   }
 }
 impl PartialEq for ItemDef {
@@ -31,55 +32,78 @@ impl PartialEq for ItemDef {
 impl std::hash::Hash for ItemDef {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) { self.id.hash(state); }
 }
-pub const BISCUIT: &ItemDef = &ItemDef::new("biscuit", mL(100), g(20)).use_data(UseData {
+
+macro_rules! defines_v2 {
+  (
+    $Struct:ty,
+    $( $name:literal : $f:ident ($($f_args:tt)*) $(. $method:ident ( $($args:tt)* ) )* ),*
+    $(,)?
+  ) => {
+    ::paste::paste! {
+      $(
+        pub const [< $name:upper >]: &$Struct = &$Struct::$f($name, $($f_args)*)
+          $(.$method($($args)*))*;
+      )*
+
+      pub const [< $Struct:upper S>]: &[&$Struct] = &[
+        $( [< $name:upper >] , )*
+      ];
+
+      pub const [< $Struct:upper S_MAP>]: ::phf::Map<&'static str, &'static $Struct> =
+        ::phf::phf_map! {
+          $( $name => &[< $name:upper >] , )*
+        };
+    }
+  };
+}
+defines_v2! {
+ItemDef,
+"biscuit": new(mL(100), g(20)).use_data(UseData {
   dur: seconds(5),
   activity: 1.03,
-  attrs: &[(Energy, Dur(hours(1))).into(), (Water, Dur(hours(-1))).into()],
-});
-pub const BERRY: &ItemDef = &ItemDef::new("berry", mL(6), g(3)).use_data(UseData {
+  on_use: |player| {
+  player.energy += hours(1);
+  player.water -= hours(1);
+},
+}),
+"berry": new(mL(6), g(3)).use_data(UseData {
   dur: milliseconds(100),
   activity: 1.02,
-  attrs: &[(Energy, Dur(minutes(2))).into(), (Water, Dur(minutes(1))).into()],
-});
-pub const BERRY_BRANCH: &ItemDef = &ItemDef::new("berry_branch", mL(300), g(200));
-pub const BERRY_BUSH: &ItemDef = &ItemDef::new("berry_bush", L(6), kg(2));
-pub const WATER_BOTTLE: &ItemDef = &ItemDef::new("water_bottle", mL(501), g(502))
-  .use_data(UseData { dur: seconds(5), activity: 1.03, attrs: &[(Water, Dur(hours(2))).into()] });
-pub const RAW_FISH: &ItemDef = &ItemDef::new("raw_fish", L(1), g(1200)).use_data(UseData {
+  on_use: |player| {
+  player.energy += minutes(2);
+  player.water += minutes(1);
+},
+}),
+"berry_branch": new(mL(300), g(200)),
+"berry_bush": new(L(6), kg(2)),
+"berry_bush_harvested": new(L(5), g(1200)),
+"water_bottle": new(mL(501), g(502)).use_data(UseData {
+  dur: seconds(5),
+  activity: 1.03,
+  on_use: |player| {
+  player.water += hours(2);
+},
+}),
+"raw_fish": new(L(1), g(1200)).use_data(UseData {
   dur: seconds(60),
   activity: 1.06,
-  attrs: &[(Energy, Dur(hours(2))).into(), (Water, Dur(minutes(50))).into()],
-});
-pub const WOOD: &ItemDef = &ItemDef::new("wood", L(50), kg(20));
-pub const TREE: &ItemDef = &ItemDef::new("tree", L(150), kg(100));
-pub const STICK: &ItemDef = &ItemDef::new("stick", L(1), g(800));
-pub const ROCK: &ItemDef = &ItemDef::new("rock", L(150), kg(100));
-pub const TREE_VINE: &ItemDef = &ItemDef::new("tree_vine", mL(500), g(300));
-pub const DRY_TREE_VINE: &ItemDef = &ItemDef::new("dry_tree_vine", mL(400), g(200));
-pub const VINE_BACKPACK: &ItemDef =
-  &ItemDef::new("vine_backpack", L(25), kg(1)).container_size(L(18));
-pub const VINE_BASKET: &ItemDef = &ItemDef::new("vine_basket", L(50), kg(2)).container_size(L(48));
-pub const CANVAS_BACKPACK: &ItemDef =
-  &ItemDef::new("canvas_backpack", L(28), g(700)).container_size(L(20));
-pub const COTTON_UNDERWEAR: &ItemDef =
-  &ItemDef::new("cotton_underwear", L(5), g(1200)).container_size(mL(500));
-pub const COTTON_PANTIES: &ItemDef = &ItemDef::new("cotton_panties", L(1), g(200));
-pub const ITEMDEFS: &[&ItemDef] = &[
-  BISCUIT,
-  WATER_BOTTLE,
-  RAW_FISH,
-  WOOD,
-  TREE,
-  STICK,
-  ROCK,
-  TREE_VINE,
-  DRY_TREE_VINE,
-  VINE_BACKPACK,
-  VINE_BASKET,
-  CANVAS_BACKPACK,
-  COTTON_UNDERWEAR,
-  COTTON_PANTIES,
-];
-pub const ITEMDEFS_MAP: ::phf::Map<&'static str, &'static ItemDef> = ::phf::phf_map! {
-    "biscuit" =>  &BISCUIT,"water" =>  &WATER_BOTTLE,"raw_fish" =>  &RAW_FISH,"wood" =>  &WOOD,"tree" =>  &TREE,"stick" =>  &STICK,"rock" =>  &ROCK,"tree_vine" =>  &TREE_VINE,"dry_tree_vine" =>  &DRY_TREE_VINE,"vine_backpack" =>  &VINE_BACKPACK,"vine_basket" =>  &VINE_BASKET,"canvas_backpack" =>  &CANVAS_BACKPACK,"cotton_underwear" =>  &COTTON_UNDERWEAR,"cotton_panties" =>  &COTTON_PANTIES,
-};
+  on_use: |player| {
+  player.energy += hours(2);
+  player.water += minutes(50);
+},
+}),
+"wood": new(L(50), kg(20)),
+"tree": new(L(150), kg(100)),
+"stick": new(L(1), g(800)),
+"big_rock": new(L(150), kg(100)),
+"flint": new(mL(700), g(800)),
+"rock": new(mL(800), kg(1)),
+"tree_vine": new(mL(500), g(300)),
+"dry_tree_vine": new(mL(400), g(200)),
+"vine_backpack": new(L(25), kg(1)).container_size(L(18)),
+"vine_basket": new(L(50), kg(2)).container_size(L(48)),
+"canvas_backpack": new(L(28), g(700)).container_size(L(20)),
+"cotton_underwear": new(L(5), g(1200)).container_size(mL(500)),
+"cotton_panties": new(L(1), g(200))
+
+}

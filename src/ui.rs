@@ -13,35 +13,7 @@ use crossterm::{
   terminal::{Clear, ClearType::UntilNewLine},
 };
 
-use crate::io::{NewScreenWriter, ScreenWriter};
-
-const AVOID_MISTAKE_INPUT_DUR: std::time::Duration = std::time::Duration::from_millis(200);
-pub fn popup_message(msg: impl AsRef<str>) {
-  let mut s = NewScreenWriter::new();
-  s.lines(msg).end();
-  sleep(AVOID_MISTAKE_INPUT_DUR);
-  s.lines(t!("ui.continue_prompt")).flush();
-  loop {
-    if let Event::Key(key_event) = read().unwrap()
-      && key_event.is_press()
-    {
-      return;
-    }
-  }
-}
-pub fn message(msg: impl AsRef<str>) {
-  let mut s = ScreenWriter::new();
-  s.lines(msg).end();
-  sleep(AVOID_MISTAKE_INPUT_DUR);
-  s.lines(t!("ui.continue_prompt")).flush();
-  loop {
-    if let Event::Key(key_event) = read().unwrap()
-      && key_event.is_press()
-    {
-      return;
-    }
-  }
-}
+use crate::io::{AVOID_MISTAKE_INPUT_DUR, ScreenWriter};
 
 pub struct NumberRequester<
   'a,
@@ -161,17 +133,18 @@ pub struct DataItem<
 }
 
 pub trait DrawEntries {
-  fn draw_entries(&mut self);
+  fn draw_entries(&mut self, s: &mut ScreenWriter);
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, EnterFn> DrawEntries
   for DisplayList<TitleT, StrT, SelectedFn, EnterFn>
 {
-  fn draw_entries(&mut self) {
+  fn draw_entries(&mut self, s: &mut ScreenWriter) {
     for (i, DataItem { text, selected, .. }) in self.data.iter_mut().enumerate() {
       if i == self.selecting {
-        write!(self.s, "{}", (selected)(text).as_ref().attribute(Bold)).unwrap();
+        write!(s, "{}", (selected)(text).as_ref().attribute(Bold)).unwrap();
+        s.endl();
       } else {
-        self.s.lines(text);
+        s.lines(text);
       }
     }
   }
@@ -179,15 +152,15 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, Ent
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, EnterFn> DrawEntries
   for DisplayList<TitleT, StrT, (), EnterFn>
 {
-  fn draw_entries(&mut self) {
+  fn draw_entries(&mut self, s: &mut ScreenWriter) {
     for DataItem { text, .. } in self.data.iter_mut() {
-      self.s.lines(text);
+      s.lines(text);
     }
   }
 }
 pub trait Enter {
   type ReT;
-  fn enter(&mut self) -> Option<Self::ReT>;
+  fn enter(&mut self, s: &mut ScreenWriter) -> Option<Self::ReT>;
 }
 
 impl<
@@ -200,11 +173,13 @@ impl<
 {
   type ReT = ReT;
 
-  fn enter(&mut self) -> Option<ReT> {
+  fn enter(&mut self, s: &mut ScreenWriter) -> Option<ReT> {
     let f = &mut self.data[self.selecting].enter;
     match (f)(self.selecting) {
     Ok(r) => return Some(r),
-    Err(e) => message(e.to_string()),
+    Err(e) => {
+      s.message(e.to_string());
+    }
     }
     None
   }
@@ -214,10 +189,9 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn> Enter
 {
   type ReT = ();
 
-  fn enter(&mut self) -> Option<()> { None }
+  fn enter(&mut self, _s: &mut ScreenWriter) -> Option<()> { None }
 }
 pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn> {
-  s: ScreenWriter,
   origin_row: u16,
   title: Option<TitleT>,
   data: Vec<DataItem<StrT, SelectedFn, EnterFn>>,
@@ -230,7 +204,6 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
 {
   pub fn new(title: Option<TitleT>, data: Vec<DataItem<StrT, SelectedFn, EnterFn>>) -> Self {
     Self {
-      s: ScreenWriter::new(),
       origin_row: position().unwrap().1,
       title,
       data,
@@ -284,18 +257,18 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
 where
   Self: DrawEntries + Enter,
 {
-  pub fn run(&mut self) -> Option<<Self as Enter>::ReT> {
+  pub fn run(&mut self, s: &mut ScreenWriter) -> Option<<Self as Enter>::ReT> {
     'io: loop {
-      queue!(self.s.out, MoveTo(self.origin_row, 0)).unwrap();
+      queue!(s.out, MoveTo(self.origin_row, 0)).unwrap();
       if let Some(t) = self.title.as_ref() {
-        self.s.lines(t);
+        s.lines(t);
       }
       if self.data.is_empty() {
-        self.s.lines(t!("ui.display_list.empty")).flush();
+        s.message(t!("ui.display_list.empty"));
         return None;
       }
-      self.draw_entries();
-      self.s.flush();
+      self.draw_entries(s);
+      s.end();
       loop {
         let Event::Key(key_event) = read().unwrap() else { continue };
         use KeyCode::*;
@@ -321,7 +294,7 @@ where
             continue 'io;
           },
         Enter => {
-          if let Some(r) = self.enter() {
+          if let Some(r) = self.enter(s) {
             return Some(r);
           }
           break;
@@ -329,6 +302,29 @@ where
         Esc => return None,
         _ => {}
         }
+      }
+    }
+  }
+}
+impl ScreenWriter {
+  pub fn list<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>(
+    &mut self, mut display_list: DisplayList<TitleT, StrT, SelectedFn, EnterFn>,
+  ) -> Option<<DisplayList<TitleT, StrT, SelectedFn, EnterFn> as Enter>::ReT>
+  where
+    DisplayList<TitleT, StrT, SelectedFn, EnterFn>: DrawEntries + Enter,
+  {
+    display_list.run(self)
+  }
+
+  pub fn message(&mut self, msg: impl AsRef<str>) -> &mut Self {
+    self.lines(msg).end();
+    sleep(AVOID_MISTAKE_INPUT_DUR);
+    self.lines(t!("ui.continue_prompt")).flush();
+    loop {
+      if let Event::Key(key_event) = read().unwrap()
+        && key_event.is_press()
+      {
+        return self;
       }
     }
   }

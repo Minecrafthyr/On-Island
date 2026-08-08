@@ -1,7 +1,7 @@
 use crate::{
   game::Game,
   io::NewScreenWriter,
-  ui::{DataItem, DisplayList, NumberRequester, message},
+  ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
 
@@ -24,8 +24,8 @@ impl Game {
       })
       .collect();
 
-    NewScreenWriter::new();
-    let Some(choice) = DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.pickup.title")),
       options
         .iter()
@@ -44,8 +44,7 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )
-    .run() else {
+    )) else {
       return;
     };
 
@@ -59,12 +58,12 @@ impl Game {
     };
     for i in 0..count {
       let Some((pick_time, activity)) = self.player.pickup_time(item) else {
-        message(t!("action.pickup.remaining", count = count - i));
+        s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
       self.action_time_pass(pick_time, activity);
       if let Some(_left) = self.player.insert_item(item) {
-        message(t!("action.pickup.remaining", count = count - i));
+        s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
       self.locations[location_index].pickup_stacks.remove_item(item);

@@ -3,15 +3,14 @@ use std::{fmt::Display, io::stdout, thread::sleep};
 use crossterm::{
   event::{Event, KeyCode, read},
   execute,
-  terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
+  terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use rand::rngs::ThreadRng;
-use strum::IntoEnumIterator;
 use time::Duration;
 
 use crate::{
-  attribute::Attribute, io::NewScreenWriter, location::Locations, player::Player,
-  ui::NumberRequester, utils::NameAndDesc,
+  io::NewScreenWriter, location::Locations, player::Player, ui::NumberRequester,
+  units::DurationDisplay, utils::NameAndDesc,
 };
 
 pub mod craft;
@@ -36,6 +35,7 @@ impl Game {
       player: Player::new(),
     };
     execute!(stdout(), EnterAlternateScreen)?;
+    enable_raw_mode().unwrap();
     Ok(g)
   }
 
@@ -45,13 +45,13 @@ impl Game {
 
     self.player.tick(1.0);
 
-    if self.player.attrs.energy <= Duration::ZERO {
+    if self.player.energy <= Duration::ZERO {
       self.end_game(t!("game.starved"));
     }
-    if self.player.attrs.water <= Duration::ZERO {
+    if self.player.water <= Duration::ZERO {
       self.end_game(t!("game.dehydrated"));
     }
-    if self.player.attrs.health <= 0.0 {
+    if self.player.health <= 0.0 {
       self.end_game(t!("game.injured"));
     }
 
@@ -83,18 +83,28 @@ impl Game {
   fn render(&mut self) {
     let mut s = NewScreenWriter::new();
     s.lines(t!("game.title")).endl();
-    for attr in Attribute::iter() {
-      s.lines(t!("game.stats", name = attr.name(), value = self.player.attrs.get(attr)));
-    }
+    s.lines(t!(
+      "game.stats",
+      name = t!("attribute.health.name"),
+      value = format!("{:.2}%", self.player.health)
+    ));
+    s.lines(t!(
+      "game.stats",
+      name = t!("attribute.energy.name"),
+      value = DurationDisplay(self.player.energy)
+    ));
+    s.lines(t!(
+      "game.stats",
+      name = t!("attribute.water.name"),
+      value = DurationDisplay(self.player.water)
+    ));
     s.lines(t!("game.status_line", location = self.player.location.name())).end();
   }
 
   pub fn end_game(&mut self, message: impl Display) {
-    let mut s = NewScreenWriter::new();
-    s.lines(t!("game.over", message = message)).end();
-    sleep(std::time::Duration::from_secs(3));
-
-    execute!(s.out, LeaveAlternateScreen).unwrap();
+    NewScreenWriter::new().lines(t!("game.over_message", message = message)).end();
+    sleep(std::time::Duration::from_secs(2));
+    execute!(stdout(), LeaveAlternateScreen).unwrap();
     disable_raw_mode().unwrap();
     println!("{}", t!("game.over_message", message = message));
     std::process::exit(0);

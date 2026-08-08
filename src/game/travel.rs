@@ -8,8 +8,8 @@ use crate::{
 impl Game {
   pub fn travel(&mut self) {
     let options = &self.locations[self.player.location].can_go;
-    NewScreenWriter::new();
-    let Some(choice) = DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.travel.title", current_location = self.player.location.name())),
       options
         .iter()
@@ -26,8 +26,7 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )
-    .run() else {
+    )) else {
       return;
     };
 

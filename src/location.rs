@@ -85,7 +85,7 @@ impl Locations {
         can_go: vec![(Location::Beach, seconds(30))],
       },
       LocationData {
-        pickup_stacks: [(ROCK, 50)].into(),
+        pickup_stacks: [(BIG_ROCK, 50)].into(),
         gather_stacks: [(RAW_FISH, 10)].into(),
         restore: vec![RestorationData::new(RAW_FISH.into(), 1..=2, 0.3, 10, minutes(20))],
         can_go: vec![(Location::StrandedShip, seconds(40)), (Location::Forest, minutes(3))],

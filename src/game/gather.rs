@@ -5,14 +5,14 @@ use crate::{
   game::Game,
   io::NewScreenWriter,
   item::{Item, ItemStacks, RAW_FISH, TREE},
-  ui::{DataItem, DisplayList, NumberRequester, message},
+  ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
 impl Game {
   pub fn gather(&mut self) {
     let location_data = &self.locations[self.player.location];
-    NewScreenWriter::new();
-    let Some(choice) = DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.gather.title")),
       location_data
         .gather_stacks
@@ -30,8 +30,7 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )
-    .run() else {
+    )) else {
       return;
     };
     let item = location_data.gather_stacks[choice].item;
@@ -44,7 +43,7 @@ impl Game {
     "tree" => Some((Duration::minutes(30), 2.0, [(Item::new(TREE), 2)].into())),
     _ => None,
     }) else {
-      message("你无法采集它！");
+      s.message("你无法采集它！");
       return;
     };
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))

@@ -1,4 +1,16 @@
 item:
+  berry:
+    name: 浆果
+    description: 可以吃的浆果。
+  berry_branch:
+    name: 浆果枝
+    description: 一根从浆果丛上摘下来的枝条，上面挂了许多浆果。
+  berry_bush:
+    name: 浆果丛
+    description: 一株浆果丛，上面结满了浆果。
+  berry_bush_harvested:
+    name: 浆果丛（已采摘）
+    description: 一株已被采摘的浆果丛。
   biscuit:
     name: 饼干
     description: 一些饼干，会让你口渴。
@@ -9,11 +21,17 @@ item:
     name: 鱼
     description: 新鲜的鱼，可以吃。
   wood:
-    name: 木头
-    description: 坚硬的木头。
+    name: 原木
+    description: 一大段原木。
   rock:
     name: 石块
     description: 坚硬的石块。
+  flint:
+    name: 燧石
+    description: 尖端锋利的坚硬岩石，可用于制作工具。
+  big_rock:
+    name: 大石块
+    description: 一块矗立的大石块。
   tree_vine:
     name: 树藤
     description: 长而柔韧的树藤。
@@ -80,7 +98,7 @@ action:
   use_item:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) %{attrs} - %{description}"
+    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) - %{description}"
   craft:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
@@ -88,7 +106,7 @@ action:
     entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
     empty: 你当前没有足够的材料来进行任何合成。
   travel:
-    title: "当前地点：{current_location}\n可以前往以下地点："
+    title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}"
 crafting:

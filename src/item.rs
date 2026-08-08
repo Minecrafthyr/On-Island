@@ -2,20 +2,12 @@ use std::{
   fmt::Display,
   hash::Hash,
   mem::transmute,
-  ops::{Deref, DerefMut},
+  ops::{Deref, DerefMut, RangeBounds},
 };
 
 use time::Duration;
 
-use crate::{
-  attribute::{
-    Attribute::{Energy, Water},
-    AttributeModifier,
-    AttributeValue::Dur,
-  },
-  units::*,
-  utils::NameAndDesc,
-};
+use crate::{player::Player, units::*, utils::NameAndDesc};
 pub struct PocketDef {
   pub id: &'static str,
   pub capacity: Volume,
@@ -48,7 +40,7 @@ impl Deref for Container {
 pub struct UseData {
   pub dur: Duration,
   pub activity: f64,
-  pub attrs: &'static [AttributeModifier],
+  pub on_use: fn(&mut Player),
 }
 pub mod data;
 pub use data::*;
@@ -101,6 +93,16 @@ const impl From<(&'static ItemDef, u64)> for ItemStack {
 }
 const impl From<ItemDefStack> for ItemStack {
   fn from(value: ItemDefStack) -> Self { Self { item: Item::new(value.item), count: value.count } }
+}
+
+pub struct ItemMatcher<CountRange: RangeBounds<u64>> {
+  pub defs: Vec<&'static ItemDef>,
+  pub count: CountRange,
+}
+impl<CountRange: RangeBounds<u64>> ItemMatcher<CountRange> {
+  pub fn matches(&self, items: ItemStack) -> bool {
+    self.count.contains(&items.count) && self.defs.contains(&items.item.def)
+  }
 }
 
 #[derive(Clone, Copy, PartialEq)]

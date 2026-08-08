@@ -6,8 +6,8 @@ use crate::{
 };
 impl Game {
   pub fn inventory(&self) {
-    NewScreenWriter::new();
-    DisplayList::new(
+    let mut s = NewScreenWriter::new();
+    s.list(DisplayList::new(
       Some(t!("action.inventory.title")),
       self
         .player
@@ -26,7 +26,6 @@ impl Game {
           enter: (),
         })
         .collect(),
-    )
-    .run();
+    ));
   }
 }

@@ -33,7 +33,7 @@ impl Game {
     )) else {
       return;
     };
-    let item = location_data.gather_stacks[choice].item;
+    let item = location_data.gather_stacks[choice].item.clone();
     let Some((gather_time, activity, item_stacks)) = (match item.get_id() {
     "raw_fish" => Some((
       Duration::seconds(self.rng.random_range(120..=2000)),
@@ -58,7 +58,7 @@ impl Game {
       for item_stack in item_stacks.iter().cloned() {
         self.player.inventory.insert_items(item_stack);
       }
-      self.locations[self.player.location].gather_stacks.remove_item(item);
+      self.locations[self.player.location].gather_stacks.remove_items(&item, 1);
     }
   }
 }

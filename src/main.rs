@@ -1,5 +1,17 @@
-#![feature(const_trait_impl, const_default, derive_const, const_convert, inherent_associated_types)]
+#![feature(
+  const_trait_impl,
+  const_default,
+  derive_const,
+  const_convert,
+  inherent_associated_types,
+  generic_const_exprs,
+  const_precise_live_drops,
+  // const_array,
+  // const_heap,
+  // const_closures
+)]
 #![allow(incomplete_features, clippy::missing_transmute_annotations)]
+
 use crate::game::Game;
 pub mod crafting;
 pub mod game;

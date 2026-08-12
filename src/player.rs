@@ -82,13 +82,8 @@ impl Player {
     self.inventory_weight = self.inventory.iter().fold(Mass::ZERO, |v, i| v + i.weight());
   }
 
-  pub fn remove_item(&mut self, item: Item) {
-    self.inventory.remove_item(item);
-    self.recalc_volume_and_size();
-  }
-
-  pub fn remove_items(&mut self, is: ItemStack) {
-    self.inventory.remove_items(is);
+  pub fn remove_items(&mut self, item: &Item, count: u64) {
+    self.inventory.remove_items(item, count);
     self.recalc_volume_and_size();
   }
 
@@ -125,11 +120,11 @@ impl Player {
     };
     self.inventory_volume_used += i.item.volume * count;
     self.inventory_weight += i.item.weight * count;
-    self.inventory.insert_items(ItemStack { item: i.item, count });
+    self.inventory.insert_items(ItemStack { item: i.item.clone(), count });
     if i.count != count { Some(ItemStack { item: i.item, count: i.count - count }) } else { None }
   }
 
-  pub fn pickup_time(&self, item: Item) -> Option<(Duration, f64)> {
+  pub fn pickup_time(&self, item: &Item) -> Option<(Duration, f64)> {
     if item.weight > self.max_pickup_weight() {
       return None;
     }
@@ -137,7 +132,6 @@ impl Player {
 
     let base_time = weight * 0.1 + 0.6;
     let base_activity = weight * 0.1 + 1.2;
-
     let weight_factor = if weight > 0.0 { 1.0 + (weight / 10.0).ln().max(0.0) * 0.1 } else { 1.0 };
 
     let activity_factor = 1.0 + (weight / 5.0).sqrt() * 0.3;

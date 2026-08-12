@@ -44,7 +44,7 @@ impl LocationData {
             count += 1;
           }
         }
-        self.gather_stacks.insert_items(ItemStack { item: r.item, count });
+        self.gather_stacks.insert_items(ItemStack { item: r.item.clone(), count });
       }
     }
   }

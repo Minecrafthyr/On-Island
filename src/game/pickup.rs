@@ -8,7 +8,9 @@ use crate::{
 impl Game {
   pub fn pickup(&mut self) {
     let location_index = self.player.location;
+    let mut s = NewScreenWriter::new();
     if self.locations[location_index].pickup_stacks.is_empty() {
+      s.message("这里没有能拾取的东西！");
       return;
     }
     let options: Vec<_> = self.locations[location_index]
@@ -16,15 +18,14 @@ impl Game {
       .iter()
       .enumerate()
       .filter_map(|(i, item_stack)| {
-        let item = item_stack.item;
+        let item = item_stack.item.clone();
         self
           .player
-          .pickup_time(item)
+          .pickup_time(&item)
           .map(|(dur, activity)| (i, item, item_stack.count, dur, activity))
       })
       .collect();
 
-    let mut s = NewScreenWriter::new();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.pickup.title")),
       options
@@ -48,7 +49,7 @@ impl Game {
       return;
     };
 
-    let (_, item, stack_count, _, _) = options[choice];
+    let (_, item, stack_count, _, _) = options[choice].clone();
     let Some(count) = NumberRequester::new(t!("action.pickup.how_many"))
       .range(1..=stack_count)
       .default(1)
@@ -57,16 +58,16 @@ impl Game {
       return;
     };
     for i in 0..count {
-      let Some((pick_time, activity)) = self.player.pickup_time(item) else {
+      let Some((pick_time, activity)) = self.player.pickup_time(&item) else {
         s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
       self.action_time_pass(pick_time, activity);
-      if let Some(_left) = self.player.insert_item(item) {
+      if let Some(_left) = self.player.insert_item(item.clone()) {
         s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
-      self.locations[location_index].pickup_stacks.remove_item(item);
+      self.locations[location_index].pickup_stacks.remove_items(&item, 1);
     }
   }
 }

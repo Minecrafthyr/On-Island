@@ -47,7 +47,7 @@ impl Game {
 
   pub fn apply_recipe(&mut self, recipe: &CraftingRecipe) -> bool {
     for ids in recipe.inputs.iter().copied() {
-      self.player.inventory.remove_items(ids.into());
+      self.player.inventory.remove_items(&ids.item.into(), ids.count);
     }
     for ids in recipe.outputs.iter().copied() {
       if let Some(r) = self.player.insert_items(ids.into()) {

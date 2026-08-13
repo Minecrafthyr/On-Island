@@ -91,10 +91,6 @@ action:
     entry: "[%{index}] %{name} ×%{count} - %{description}"
   rest:
     prompt: 请选择要休息的时间（分钟）
-  travel:
-    title: 有以下地点可以前往：
-    entry: "[%{index}] %{name} (%{time}) - %{description}"
-    choose: 请选择要前往的地点编号
   use_item:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号

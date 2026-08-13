@@ -84,6 +84,11 @@ impl Container {
     }
   }
 
+  pub fn insert_items(&mut self, mut items: ItemStack) -> Option<ItemStack> {
+    self.insert_items_from(&mut items);
+    if items.count == 0 { None } else { Some(items) }
+  }
+
   pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
     for stack in stacks.iter_mut() {
       self.insert_items_from(stack);
@@ -93,5 +98,10 @@ impl Container {
         stacks.swap_remove(i);
       }
     }
+  }
+
+  pub fn insert_stacks(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
+    self.insert_stacks_from(&mut stacks);
+    if stacks.is_empty() { None } else { Some(stacks) }
   }
 }

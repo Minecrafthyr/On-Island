@@ -135,24 +135,27 @@ macro_rules! impl_traits {
   };
 }
 
+const K: u64 = 1000;
+const M: u64 = K * 1000;
+const B: u64 = M * 1000;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[derive_const(Default)]
 pub struct Volume(u64);
 impl_traits!(Volume);
 
-const UL_PER_ML: u64 = 1000;
-const UL_PER_L: u64 = UL_PER_ML * 1000;
-const UL_PER_M3: u64 = UL_PER_L * 1000;
-impl_constructors!(Volume, uL: 1, mL: UL_PER_ML, cm3: UL_PER_ML, L: UL_PER_L, m3: UL_PER_M3);
+impl_constructors!(Volume, uL: 1, mL: K, cm3: K , L: M, m3: B);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[derive_const(Default)]
 pub struct Mass(u64);
 impl_traits!(Mass);
-const UG_PER_MG: u64 = 1000;
-const UG_PER_G: u64 = UG_PER_MG * 1000;
-const UG_PER_KG: u64 = UG_PER_G * 1000;
-impl_constructors!(Mass, ug: 1, mg: UG_PER_MG, g: UG_PER_G, kg: UG_PER_KG);
+impl_constructors!(Mass, ug: 1, mg: K, g: M, kg: B);
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive_const(Default)]
+pub struct Length(u64);
+impl_traits!(Length);
+impl_constructors!(Length, um: 1, mm: K, cm: 10*K, m: M, km: B);
 
 // #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 // #[derive_const(Default)]

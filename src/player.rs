@@ -6,6 +6,16 @@ use crate::{
   units::*,
 };
 
+pub struct DamageDef {
+  pub death_message: &'static str,
+  pub log_message: &'static str,
+}
+
+pub struct Damage {
+  pub def: DamageDef,
+  pub amount: f64,
+}
+
 pub struct Player {
   pub health: f64,
   pub energy: Duration,

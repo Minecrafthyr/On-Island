@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use time::Duration;
 
-use crate::item::{Item, ItemDefStacks, ItemStacks};
+use crate::item::ItemDefStacks;
 
 #[derive(Clone, Copy)]
 pub struct CraftingRecipe {
@@ -19,22 +19,6 @@ impl CraftingRecipe {
   pub fn inputs_text(&self) -> String { self.inputs.iter().map(ToString::to_string).join(" + ") }
 
   pub fn outputs_text(&self) -> String { self.outputs.iter().map(ToString::to_string).join(" + ") }
-
-  pub fn can_apply(&self, inventory: &ItemStacks) -> bool {
-    self.inputs.iter().all(|ids| inventory.count_of(Item::new(ids.item)) >= ids.count)
-  }
-
-  pub fn max_batch_count(&self, inventory: &ItemStacks) -> u64 {
-    self
-      .inputs
-      .iter()
-      .map(|ids| {
-        let available = inventory.count_of(Item::new(ids.item));
-        available / ids.count
-      })
-      .min()
-      .unwrap_or(0)
-  }
 }
 use crate::item::*;
 

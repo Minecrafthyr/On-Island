@@ -11,8 +11,10 @@ impl Game {
       Some(t!("action.inventory.title")),
       self
         .player
-        .inventory
+        .worn
         .iter()
+        .filter_map(|i| i.container.as_ref())
+        .flat_map(|c| c.pockets.iter().flat_map(|p| p.stacks.iter()))
         .map(|is| DataItem {
           text: t!(
             "action.inventory.entry",

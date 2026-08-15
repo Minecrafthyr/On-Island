@@ -53,26 +53,33 @@ impl ItemStacks {
     }
   }
 
-  pub fn count_of(&self, item: Item) -> u64 { self.count_of_matching(|ei| ei == &item) }
-
   pub fn count_of_matching<F: Fn(&Item) -> bool>(&self, f: F) -> u64 {
     self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
   }
+
+  pub fn count_of(&self, item: &Item) -> u64 { self.count_of_matching(|ei| ei == item) }
 
   pub fn remove_items(&mut self, item: &Item, count: u64) {
     self.remove_items_matching(|ei| ei == item, count);
   }
 
-  pub fn remove_items_matching<F: Fn(&Item) -> bool>(&mut self, f: F, mut count: u64) {
+  pub fn remove_items_matching<F: Fn(&Item) -> bool>(
+    &mut self, f: F, mut count: u64,
+  ) -> (Vec<ItemStack>, u64) {
+    let mut removed = Vec::new();
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        self.swap_remove(i);
-      } else {
+        removed.push(self.swap_remove(i));
+      } else if count < self[i].count {
         self[i].count = self[i].count.saturating_sub(count);
-        break;
+        return (removed, 0);
+      } else {
+        removed.push(self.swap_remove(i));
+        return (removed, 0);
       }
     }
+    (removed, count)
   }
 }
 

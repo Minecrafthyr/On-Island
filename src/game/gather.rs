@@ -4,7 +4,7 @@ use time::Duration;
 use crate::{
   game::Game,
   io::NewScreenWriter,
-  item::{Item, ItemStacks, RAW_FISH, TREE},
+  location::RestorationData,
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
@@ -15,7 +15,7 @@ impl Game {
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.gather.title")),
       location_data
-        .gather_stacks
+        .restore_and_gather
         .iter()
         .enumerate()
         .map(|(i, item_stack)| DataItem {
@@ -33,32 +33,25 @@ impl Game {
     )) else {
       return;
     };
-    let item = location_data.gather_stacks[choice].item.clone();
-    let Some((gather_time, activity, item_stacks)) = (match item.get_id() {
-    "raw_fish" => Some((
-      Duration::seconds(self.rng.random_range(120..=2000)),
-      1.2,
-      ItemStacks::from([(Item::new(RAW_FISH), 1)]),
-    )),
-    "tree" => Some((Duration::minutes(30), 2.0, [(Item::new(TREE), 2)].into())),
-    _ => None,
-    }) else {
-      s.message("你无法采集它！");
-      return;
-    };
+    let RestorationData { item: _, gather_time, activity, produce, .. } =
+      location_data.restore_and_gather[choice].clone();
+
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
-      .range(1..=location_data.gather_stacks[choice].count)
+      .range(1..=location_data.restore_and_gather[choice].count)
       .default(1)
       .request()
     else {
       return;
     };
     for _ in 0..count {
-      self.action_time_pass(gather_time, activity);
-      for item_stack in item_stacks.iter().cloned() {
-        self.player.inventory.insert_items(item_stack);
-      }
-      self.locations[self.player.location].gather_stacks.remove_items(&item, 1);
+      let (b, e) = gather_time.clone().into_inner();
+      let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
+      self.action_time_pass(Duration::seconds_f64(t), activity);
+      self.player.insert_stacks(produce(
+        &mut self.locations[self.player.location].restore_and_gather[choice],
+      ));
+
+      self.locations[self.player.location].restore_and_gather[choice].count -= 1;
     }
   }
 }

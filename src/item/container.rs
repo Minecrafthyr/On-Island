@@ -9,16 +9,33 @@ pub struct PocketDef {
 #[derive(Clone, PartialEq)]
 pub struct Pocket {
   pub def: &'static PocketDef,
-  pub item_stacks: ItemStacks,
+  pub stacks: ItemStacks,
   pub volume_used: Volume,
   pub weight: Mass,
+  pub priority: i32,
 }
 impl Deref for Pocket {
   type Target = PocketDef;
 
   fn deref(&self) -> &Self::Target { self.def }
 }
+impl From<&'static PocketDef> for Pocket {
+  fn from(value: &'static PocketDef) -> Self {
+    Self {
+      def: value,
+      stacks: ItemStacks::new(),
+      volume_used: Volume::ZERO,
+      weight: Mass::ZERO,
+      priority: 0,
+    }
+  }
+}
 impl Pocket {
+  pub fn recalc_volume_and_size(&mut self) {
+    self.volume_used = self.stacks.iter().fold(Volume::ZERO, |v, i| v + i.volume());
+    self.weight = self.stacks.iter().fold(Mass::ZERO, |v, i| v + i.weight());
+  }
+
   pub fn holdable_count(&self, items: &ItemStack) -> u64 {
     let volume_cap: u64 = ((self.capacity - self.volume_used) / items.item.volume.into()).into();
     let max_hold = volume_cap.min(items.count);
@@ -30,14 +47,14 @@ impl Pocket {
   }
 
   pub fn insert_items_from(&mut self, items: &mut ItemStack) {
-    let count = self.holdable_count(&items);
+    let count = self.holdable_count(items);
     if count == 0 {
       return;
     }
     self.volume_used += items.item.volume * count;
     self.weight += items.item.weight * count;
     items.count -= count;
-    self.item_stacks.insert_items(ItemStack { item: items.item.clone(), count });
+    self.stacks.insert_items(ItemStack { item: items.item.clone(), count });
   }
 
   pub fn insert_items(&mut self, mut items: ItemStack) -> Option<ItemStack> {
@@ -58,6 +75,21 @@ impl Pocket {
     self.insert_stacks_from(&mut stacks);
     if stacks.is_empty() { None } else { Some(stacks) }
   }
+
+  pub fn remove_items_matching<F: Fn(&Item) -> bool>(
+    &mut self, f: F, count: u64,
+  ) -> (Vec<ItemStack>, u64) {
+    let (removed, mismatch) = self.stacks.remove_items_matching(f, count);
+    for is in &removed {
+      self.volume_used -= is.volume();
+      self.weight -= is.weight();
+    }
+    (removed, mismatch)
+  }
+
+  pub fn remove_items(&mut self, item: &Item, count: u64) {
+    self.remove_items_matching(|ei| ei == item, count);
+  }
 }
 #[derive(PartialEq, Clone)]
 pub struct ContainerDef {
@@ -73,8 +105,10 @@ impl Deref for Container {
 
   fn deref(&self) -> &Self::Target { self.def }
 }
-const impl From<&'static ContainerDef> for Container {
-  fn from(value: &'static ContainerDef) -> Self { Self { def: value, pockets: Vec::new() } }
+impl From<&'static ContainerDef> for Container {
+  fn from(value: &'static ContainerDef) -> Self {
+    Self { def: value, pockets: value.pocket_defs.iter().map(|p| p.into()).collect() }
+  }
 }
 impl Container {
   pub fn insert_items_from(&mut self, items: &mut ItemStack) {

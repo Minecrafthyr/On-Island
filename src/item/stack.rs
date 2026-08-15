@@ -38,7 +38,7 @@ impl ItemStack {
     let Some(container) = &mut self.item.container else {
       return Some(stacks);
     };
-    if let Some(r) = container.as_mut().insert_stacks(stacks) { Some(r) } else { None }
+    container.as_mut().insert_stacks(stacks)
   }
 }
 const impl From<(Item, u64)> for ItemStack {

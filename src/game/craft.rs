@@ -2,12 +2,18 @@ use crate::{
   crafting::{CRAFTING_RECIPES, CraftingRecipe},
   game::Game,
   io::NewScreenWriter,
+  item::{Item, ItemStack},
+  player::Player,
   ui::{DataItem, DisplayList, NumberRequester},
 };
 impl Game {
   pub fn craft(&mut self) {
-    let options: Vec<_> =
-      CRAFTING_RECIPES.iter().filter(|recipe| recipe.can_apply(&self.player.inventory)).collect();
+    let options: Vec<_> = CRAFTING_RECIPES
+      .iter()
+      .filter(|recipe| {
+        recipe.inputs.iter().all(|ids| self.player.count_of(&Item::new(ids.item)) >= ids.count)
+      })
+      .collect();
     let mut s = NewScreenWriter::new();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.craft.title")),
@@ -32,8 +38,21 @@ impl Game {
       return;
     };
     let recipe = options[choice];
+    pub fn max_batch_count(r: &CraftingRecipe, player: &Player) -> u64 {
+      r.inputs
+        .iter()
+        .map(|ids| {
+          let available =
+            player.worn.iter().filter_map(|i| i.container.as_ref()).fold(0u64, |i, c| {
+              i + c.pockets.iter().fold(0u64, |i, p| i + p.stacks.count_of(&Item::new(ids.item)))
+            });
+          available / ids.count
+        })
+        .min()
+        .unwrap_or(0)
+    }
     let Some(batch_count) = NumberRequester::new(t!("action.craft.how_many"))
-      .range(1..=recipe.max_batch_count(&self.player.inventory))
+      .range(1..=max_batch_count(recipe, &self.player))
       .default(1)
       .request()
     else {
@@ -47,7 +66,7 @@ impl Game {
 
   pub fn apply_recipe(&mut self, recipe: &CraftingRecipe) -> bool {
     for ids in recipe.inputs.iter().copied() {
-      self.player.inventory.remove_items(&ids.item.into(), ids.count);
+      self.player.insert_items(ItemStack::new(ids.item.into(), ids.count));
     }
     for ids in recipe.outputs.iter().copied() {
       if let Some(r) = self.player.insert_items(ids.into()) {

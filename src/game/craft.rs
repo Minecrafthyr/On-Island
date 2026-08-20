@@ -1,7 +1,7 @@
 use crate::{
-  crafting::{CRAFTING_RECIPES, CraftingRecipe},
+  crafting::{CRAFTING_RECIPES, Recipe},
   game::Game,
-  io::NewScreenWriter,
+  io::ScreenWriter,
   item::{Item, ItemStack},
   player::Player,
   ui::{DataItem, DisplayList, NumberRequester},
@@ -14,7 +14,7 @@ impl Game {
         recipe.inputs.iter().all(|ids| self.player.count_of(&Item::new(ids.item)) >= ids.count)
       })
       .collect();
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.craft.title")),
       options
@@ -38,7 +38,7 @@ impl Game {
       return;
     };
     let recipe = options[choice];
-    pub fn max_batch_count(r: &CraftingRecipe, player: &Player) -> u64 {
+    pub fn max_batch_count(r: &Recipe, player: &Player) -> u64 {
       r.inputs
         .iter()
         .map(|ids| {
@@ -64,7 +64,7 @@ impl Game {
     }
   }
 
-  pub fn apply_recipe(&mut self, recipe: &CraftingRecipe) -> bool {
+  pub fn apply_recipe(&mut self, recipe: &Recipe) -> bool {
     for ids in recipe.inputs.iter().copied() {
       self.player.insert_items(ItemStack::new(ids.item.into(), ids.count));
     }

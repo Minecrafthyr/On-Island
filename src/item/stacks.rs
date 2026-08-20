@@ -45,11 +45,17 @@ impl ItemStacks {
 
   pub fn insert_item(&mut self, item: Item) { self.insert_items(ItemStack { item, count: 1 }); }
 
-  pub fn insert_items(&mut self, item_stack: ItemStack) {
-    if let Some(stack) = self.iter_mut().find(|ei| ei.item == item_stack.item) {
-      stack.count += item_stack.count;
+  pub fn insert_items(&mut self, stack: ItemStack) {
+    if let Some(f) = self.iter_mut().find(|ei| ei.item == stack.item) {
+      f.count += stack.count;
     } else {
-      self.push(item_stack);
+      self.push(stack);
+    }
+  }
+
+  pub fn insert_stacks(&mut self, stacks: ItemStacks) {
+    for stack in stacks.0 {
+      self.insert_items(stack);
     }
   }
 
@@ -65,17 +71,17 @@ impl ItemStacks {
 
   pub fn remove_items_matching<F: Fn(&Item) -> bool>(
     &mut self, f: F, mut count: u64,
-  ) -> (Vec<ItemStack>, u64) {
-    let mut removed = Vec::new();
+  ) -> (ItemStacks, u64) {
+    let mut removed = ItemStacks::new();
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        removed.push(self.swap_remove(i));
+        removed.insert_items(self.swap_remove(i));
       } else if count < self[i].count {
         self[i].count = self[i].count.saturating_sub(count);
         return (removed, 0);
       } else {
-        removed.push(self.swap_remove(i));
+        removed.insert_items(self.swap_remove(i));
         return (removed, 0);
       }
     }

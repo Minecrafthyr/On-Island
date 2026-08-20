@@ -1,6 +1,6 @@
 use crate::{
   game::Game,
-  io::NewScreenWriter,
+  io::ScreenWriter,
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };
@@ -21,7 +21,7 @@ impl Game {
       if options.is_empty() {
         return;
       }
-      let mut s = NewScreenWriter::new();
+      let mut s = ScreenWriter::new_screen();
       let Some(choice) = s.list(DisplayList::new(
         Some(t!("action.use_item.title")),
         options

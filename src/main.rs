@@ -6,6 +6,8 @@
   inherent_associated_types,
   generic_const_exprs,
   const_precise_live_drops,
+  transmute_neo
+  // mut_restriction,
   // const_array,
   // const_heap,
   // const_closures

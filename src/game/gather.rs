@@ -3,7 +3,7 @@ use time::Duration;
 
 use crate::{
   game::Game,
-  io::NewScreenWriter,
+  io::ScreenWriter,
   location::RestorationData,
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
@@ -11,7 +11,7 @@ use crate::{
 impl Game {
   pub fn gather(&mut self) {
     let location_data = &self.locations[self.player.location];
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.gather.title")),
       location_data

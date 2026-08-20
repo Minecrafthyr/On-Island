@@ -60,6 +60,35 @@ pub struct Item {
 impl Item {
   pub const fn new(def: &'static ItemDef) -> Self { Self { def, container: None } }
 
+  pub fn has_free_pockets(&self) -> bool {
+    self
+      .container
+      .iter()
+      .flat_map(|c| {
+        c.pockets.iter().filter(|p| p.capacity > p.volume_used && p.max_weight > p.weight)
+      })
+      .count()
+      > 0
+  }
+
+  pub fn get_weight(&self) -> Mass {
+    self.weight
+      + self
+        .container
+        .iter()
+        .flat_map(|c| c.pockets.iter().map(|p| p.weight))
+        .fold(Mass::ZERO, |m, p| m + p)
+  }
+
+  pub fn get_volume(&self) -> Volume {
+    self.volume
+      + self
+        .container
+        .iter()
+        .flat_map(|c| c.pockets.iter().filter(|p| !p.rigid).map(|p| p.volume_used))
+        .fold(Volume::ZERO, |v, p| v + p)
+  }
+
   pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
     let Some(container) = &mut self.container else { return };
     container.insert_items_from(stack);

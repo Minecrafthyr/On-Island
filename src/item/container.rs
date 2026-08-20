@@ -1,18 +1,29 @@
+use std::mem::transmute_neo;
+
 use super::*;
-#[derive(PartialEq)]
 pub struct PocketDef {
   pub id: &'static str,
   pub capacity: Volume,
   pub max_weight: Mass,
   pub rigid: bool,
+  pub specify_items: fn(&Item),
 }
-#[derive(Clone, PartialEq)]
+
+impl PartialEq for PocketDef {
+  fn eq(&self, other: &Self) -> bool { self.id == other.id }
+}
+impl Eq for PocketDef {}
+#[derive(Clone)]
 pub struct Pocket {
   pub def: &'static PocketDef,
   pub stacks: ItemStacks,
   pub volume_used: Volume,
   pub weight: Mass,
   pub priority: i32,
+}
+
+impl PartialEq for Pocket {
+  fn eq(&self, other: &Self) -> bool { self.def == other.def }
 }
 impl Deref for Pocket {
   type Target = PocketDef;
@@ -78,9 +89,9 @@ impl Pocket {
 
   pub fn remove_items_matching<F: Fn(&Item) -> bool>(
     &mut self, f: F, count: u64,
-  ) -> (Vec<ItemStack>, u64) {
+  ) -> (ItemStacks, u64) {
     let (removed, mismatch) = self.stacks.remove_items_matching(f, count);
-    for is in &removed {
+    for is in &removed.0 {
       self.volume_used -= is.volume();
       self.weight -= is.weight();
     }
@@ -100,6 +111,7 @@ pub struct Container {
   pub def: &'static ContainerDef,
   pub pockets: Vec<Pocket>,
 }
+
 impl Deref for Container {
   type Target = ContainerDef;
 

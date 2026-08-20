@@ -9,8 +9,7 @@ use rand::rngs::ThreadRng;
 use time::Duration;
 
 use crate::{
-  io::NewScreenWriter, location::Locations, player::Player, ui::NumberRequester,
-  units::DurationDisplay, utils::NameAndDesc,
+  io::ScreenWriter, location::Locations, player::Player, ui::NumberRequester, units::DurationDisplay, utils::NameAndDesc,
 };
 
 pub mod craft;
@@ -19,6 +18,7 @@ pub mod inventory;
 pub mod pickup;
 pub mod travel;
 pub mod use_item;
+pub mod worn;
 pub struct Game {
   pub rng: ThreadRng,
   pub time: Duration,
@@ -81,7 +81,7 @@ impl Game {
   }
 
   fn render(&mut self) {
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     s.lines(t!("game.title")).endl();
     s.lines(t!(
       "game.stats",
@@ -102,7 +102,7 @@ impl Game {
   }
 
   pub fn end_game(&mut self, message: impl Display) {
-    NewScreenWriter::new().lines(t!("game.over_message", message = message)).end();
+    ScreenWriter::new_screen().lines(t!("game.over_message", message = message)).end();
     sleep(std::time::Duration::from_secs(2));
     execute!(stdout(), LeaveAlternateScreen).unwrap();
     disable_raw_mode().unwrap();
@@ -121,6 +121,7 @@ impl Game {
       'c' => self.craft(),
       'u' => self.use_item(),
       'i' => self.inventory(),
+      'w' => self.worn(),
       'r' => self.rest(),
       'q' => self.end_game(t!("game.quit")),
       _ => {}
@@ -131,7 +132,7 @@ impl Game {
   }
 
   pub fn rest(&mut self) {
-    NewScreenWriter::new().end();
+    ScreenWriter::new_screen().end();
     let Some(s) =
       NumberRequester::new(t!("action.rest.prompt")).range(0..=10000).default(10).request()
     else {

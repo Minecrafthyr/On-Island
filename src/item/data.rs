@@ -1,6 +1,6 @@
 use crate::item::*;
 
-macro_rules! defines_v2 {
+macro_rules! defines {
   (
     $Struct:ty,
     $( $name:literal : $f:ident ($($f_args:tt)*) $(. $method:ident ( $($args:tt)* ) )* ),*
@@ -23,7 +23,7 @@ macro_rules! defines_v2 {
     }
   };
 }
-defines_v2! {
+defines! {
   ItemDef,
   "biscuit": new(mL(100), g(20)).use_data(UseData {
     dur: seconds(5),

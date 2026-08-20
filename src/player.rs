@@ -1,11 +1,7 @@
-use itertools::Itertools;
 use time::Duration;
 
 use crate::{
-  item::{
-    CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks,
-    container::Pocket,
-  },
+  item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   units::*,
 };
@@ -26,8 +22,6 @@ pub struct Player {
   pub water: Duration,
   pub location: Location,
   pub activity: f64,
-  pub inventory_volume_used: Volume,
-  pub inventory_weight: Mass,
   pub worn: Vec<Item>,
 }
 
@@ -43,8 +37,6 @@ impl Player {
       water: hours(72),
       location: Location::StrandedShip,
       activity: 1.0,
-      inventory_volume_used: Volume::ZERO,
-      inventory_weight: Mass::ZERO,
       worn: vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()],
     }
   }
@@ -89,62 +81,58 @@ impl Player {
     L(10) + self.worn.iter().fold(Volume::ZERO, |v, i| v + i.volume)
   }
 
-  pub fn free_pockets(&mut self) -> Vec<&mut Pocket> {
-    self
-      .worn
-      .iter_mut()
-      .filter_map(|i| i.container.as_mut())
-      .flat_map(|c| {
-        c.pockets.iter_mut().filter(|p| p.capacity > p.volume_used && p.max_weight > p.weight)
-      })
-      .sorted_by(|a, b| Ord::cmp(&a.priority, &b.priority))
-      .collect()
+  pub fn worn_volume_total(&self) -> Volume {
+    self.worn.iter().map(|i| i.get_volume()).fold(Volume::ZERO, |v, iv| v + iv)
   }
 
-  pub fn worn_containers_volume_used(&self) -> Volume {
+  pub fn worn_weight_total(&self) -> Mass {
+    self.worn.iter().map(|i| i.get_weight()).fold(Mass::ZERO, |w, iw| w + iw)
+  }
+
+  pub fn worn_volume_contained(&self) -> Volume {
     self
       .worn
       .iter()
       .filter_map(|i| i.container.as_ref())
-      .fold(Volume::ZERO, |v, c| v + c.pockets.iter().fold(Volume::ZERO, |v, p| v + p.volume_used))
+      .flat_map(|c| c.pockets.iter())
+      .fold(Volume::ZERO, |v, p| v + p.volume_used)
   }
 
-  pub fn insert_items(&mut self, mut i: ItemStack) -> Option<ItemStack> {
-    for p in self.free_pockets() {
-      p.insert_items_from(&mut i);
-      if i.count == 0 {
-        return None;
-      }
-    }
-    Some(i)
+  pub fn worn_weight_contained(&self) -> Mass {
+    self
+      .worn
+      .iter()
+      .filter_map(|i| i.container.as_ref())
+      .flat_map(|c| c.pockets.iter())
+      .fold(Mass::ZERO, |v, p| v + p.weight)
   }
 
-  pub fn insert_items_from(&mut self, i: &mut ItemStack) {
-    for p in self.free_pockets() {
-      p.insert_items_from(i);
-      if i.count == 0 {
+  pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
+    for i in &mut self.worn {
+      i.insert_items_from(stack);
+      if stack.count == 0 {
         return;
       }
     }
   }
 
-  pub fn insert_stacks(&mut self, mut i: ItemStacks) -> Option<ItemStacks> {
-    for p in self.free_pockets() {
-      p.insert_stacks_from(&mut i);
-      if i.is_empty() {
-        return None;
-      }
-    }
-    Some(i)
+  pub fn insert_items(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
+    self.insert_items_from(&mut stack);
+    if stack.count == 0 { None } else { Some(stack) }
   }
 
-  pub fn insert_stacks_from(&mut self, i: &mut ItemStacks) {
-    for p in self.free_pockets() {
-      p.insert_stacks_from(i);
-      if i.is_empty() {
+  pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
+    for i in &mut self.worn {
+      i.insert_stacks_from(stacks);
+      if stacks.is_empty() {
         return;
       }
     }
+  }
+
+  pub fn insert_stacks(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
+    self.insert_stacks_from(&mut stacks);
+    if stacks.is_empty() { None } else { Some(stacks) }
   }
 
   pub fn remove_items_matching<F: Fn(&Item) -> bool>(
@@ -158,10 +146,6 @@ impl Player {
       let (mut r, m) = p.remove_items_matching(&f, count);
       removed.append(&mut r);
       mismatch += m;
-    }
-    for is in &removed {
-      self.inventory_volume_used -= is.volume();
-      self.inventory_weight -= is.weight();
     }
     (removed, mismatch)
   }

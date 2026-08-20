@@ -1,6 +1,6 @@
 use crate::{
   game::Game,
-  io::NewScreenWriter,
+  io::ScreenWriter,
   item::ItemStack,
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
@@ -9,7 +9,7 @@ use crate::{
 impl Game {
   pub fn pickup(&mut self) {
     let location_index = self.player.location;
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     if self.locations[location_index].pickup_stacks.is_empty() {
       s.message("这里没有能拾取的东西！");
       return;

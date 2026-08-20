@@ -1,6 +1,6 @@
 use crate::{
   game::Game,
-  io::NewScreenWriter,
+  io::ScreenWriter,
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };
@@ -8,7 +8,7 @@ use crate::{
 impl Game {
   pub fn travel(&mut self) {
     let options = &self.locations[self.player.location].can_go;
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.travel.title", current_location = self.player.location.name())),
       options

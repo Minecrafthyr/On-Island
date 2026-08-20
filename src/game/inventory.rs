@@ -1,12 +1,9 @@
 use crate::{
-  game::Game,
-  io::NewScreenWriter,
-  ui::{DataItem, DisplayList},
-  utils::NameAndDesc,
+  game::Game, io::ScreenWriter, ui::{DataItem, DisplayList}, utils::NameAndDesc,
 };
 impl Game {
   pub fn inventory(&self) {
-    let mut s = NewScreenWriter::new();
+    let mut s = ScreenWriter::new_screen();
     s.list(DisplayList::new(
       Some(t!("action.inventory.title")),
       self

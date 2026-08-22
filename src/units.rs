@@ -6,8 +6,8 @@ use std::{
 use paste::paste;
 use time::Duration;
 
-pub trait Zero: const Default {
-  const ZERO: Self = Self::default();
+pub trait Zero {
+  const ZERO: Self;
 }
 
 macro_rules! impl_constructors {
@@ -131,7 +131,9 @@ macro_rules! impl_traits {
     impl std::fmt::Display for $type {
       fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
     }
-    impl Zero for $type {}
+    impl Zero for $type {
+      const ZERO: Self = Self::default();
+    }
   };
 }
 
@@ -179,32 +181,6 @@ pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }
 pub const fn days(days: i64) -> Duration { Duration::days(days) }
 #[inline]
 pub const fn weeks(weeks: i64) -> Duration { Duration::weeks(weeks) }
-
-macro_rules! impl_dur_detail {
-  ($($unit:ident),* $(,)?) => {
-  paste::paste! {
-    pub trait DurDetailCtrl {
-    $(
-      fn [<extract_ $unit>](&mut self) -> i64;
-    )*
-    }
-
-    impl DurDetailCtrl for Duration {
-    $(
-      fn [<extract_ $unit>](&mut self) -> i64 {
-      let value = self.[< whole_ $unit >]();
-      if value != 0 {
-        *self -= Duration::$unit(value);
-      };
-      value
-      }
-    )*
-    }
-  }
-  };
-}
-
-impl_dur_detail!(weeks, days, hours, minutes, seconds);
 
 #[derive(Default)]
 pub struct DurationDisplay(pub Duration);

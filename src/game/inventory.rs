@@ -1,5 +1,8 @@
 use crate::{
-  game::Game, io::ScreenWriter, ui::{DataItem, DisplayList}, utils::NameAndDesc,
+  game::Game,
+  io::ScreenWriter,
+  ui::{DataItem, DisplayList},
+  utils::NameAndDesc,
 };
 impl Game {
   pub fn inventory(&self) {
@@ -10,8 +13,7 @@ impl Game {
         .player
         .worn
         .iter()
-        .filter_map(|i| i.container.as_ref())
-        .flat_map(|c| c.pockets.iter().flat_map(|p| p.stacks.iter()))
+        .flat_map(|i| i.pockets.iter().flat_map(|p| p.stacks.iter()))
         .map(|is| DataItem {
           text: t!(
             "action.inventory.entry",

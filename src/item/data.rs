@@ -1,4 +1,4 @@
-use crate::item::*;
+use crate::item::{container::PocketDef, *};
 
 macro_rules! defines {
   (
@@ -67,9 +67,19 @@ defines! {
   "rock": new(mL(800), kg(1)),
   "tree_vine": new(mL(500), g(300)),
   "dry_tree_vine": new(mL(400), g(200)),
-  "vine_backpack": new(L(25), kg(1)).container_size(L(18)),
-  "vine_basket": new(L(50), kg(2)).container_size(L(48)),
-  "canvas_backpack": new(L(28), g(700)).container_size(L(20)),
-  "cotton_underwear": new(L(5), g(1200)).container_size(mL(500)),
+  "vine_backpack": new(L(25), g(900)).pockets(
+    &[PocketDef{id:"vine_backpack.main",capacity:L(18),max_weight:kg(10),rigid:false,specify_items:None}]
+  ),
+  "vine_basket": new(L(50), g(1500)).pockets(
+    &[PocketDef{id:"vine_backpack.main",capacity:L(48),max_weight:kg(40),rigid:true,specify_items:None}]
+  ),
+  "canvas_backpack": new(L(28), g(700)).pockets(
+    &[PocketDef{id:"canvas_backpack.main",capacity:L(20),max_weight:kg(50),rigid:true,specify_items:None}]
+  ),
+  "cotton_underwear": new(L(5), g(1200)).pockets(
+    &[
+      PocketDef{id:"cotton_underwear.front_left",capacity:mL(500),max_weight:g(500),rigid:true,specify_items:None},
+      ]
+  ),
   "cotton_panties": new(L(1), g(200))
 }

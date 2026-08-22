@@ -79,6 +79,7 @@ action:
     title: 物品栏
     entry: "%{name} ×%{count} {volume} {weight} - %{description}"
   pickup:
+    none: 这里没有能拾取的东西！
     title: 有以下物品可拾取：
     choose: 选择要拾取的物品编号
     how_many: 拾取多少？

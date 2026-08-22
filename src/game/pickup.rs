@@ -11,7 +11,7 @@ impl Game {
     let location_index = self.player.location;
     let mut s = ScreenWriter::new_screen();
     if self.locations[location_index].pickup_stacks.is_empty() {
-      s.message("这里没有能拾取的东西！");
+      s.message(t!("action.pickup.none"));
       return;
     }
     let options: Vec<_> = self.locations[location_index]

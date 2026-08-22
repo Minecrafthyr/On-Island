@@ -42,10 +42,11 @@ impl Game {
       r.inputs
         .iter()
         .map(|ids| {
-          let available =
-            player.worn.iter().filter_map(|i| i.container.as_ref()).fold(0u64, |i, c| {
-              i + c.pockets.iter().fold(0u64, |i, p| i + p.stacks.count_of(&Item::new(ids.item)))
-            });
+          let available = player
+            .worn
+            .iter()
+            .flat_map(|i| i.pockets.iter())
+            .fold(0u64, |i, p| i + p.stacks.count_of(&Item::new(ids.item)));
           available / ids.count
         })
         .min()

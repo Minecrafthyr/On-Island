@@ -90,21 +90,11 @@ impl Player {
   }
 
   pub fn worn_volume_contained(&self) -> Volume {
-    self
-      .worn
-      .iter()
-      .filter_map(|i| i.container.as_ref())
-      .flat_map(|c| c.pockets.iter())
-      .fold(Volume::ZERO, |v, p| v + p.volume_used)
+    self.worn.iter().flat_map(|i| i.pockets.iter()).fold(Volume::ZERO, |v, p| v + p.volume_used)
   }
 
   pub fn worn_weight_contained(&self) -> Mass {
-    self
-      .worn
-      .iter()
-      .filter_map(|i| i.container.as_ref())
-      .flat_map(|c| c.pockets.iter())
-      .fold(Mass::ZERO, |v, p| v + p.weight)
+    self.worn.iter().flat_map(|i| i.pockets.iter()).fold(Mass::ZERO, |v, p| v + p.weight)
   }
 
   pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
@@ -140,9 +130,7 @@ impl Player {
   ) -> (Vec<ItemStack>, u64) {
     let mut removed = Vec::new();
     let mut mismatch = 0u64;
-    for p in
-      self.worn.iter_mut().filter_map(|i| i.container.as_mut()).flat_map(|c| c.pockets.iter_mut())
-    {
+    for p in self.worn.iter_mut().flat_map(|i| i.pockets.iter_mut()) {
       let (mut r, m) = p.remove_items_matching(&f, count);
       removed.append(&mut r);
       mismatch += m;
@@ -168,13 +156,7 @@ impl Player {
   }
 
   pub fn get_inventory(&self) -> Vec<&ItemStack> {
-    self
-      .worn
-      .iter()
-      .filter_map(|i| i.container.as_ref())
-      .flat_map(|c| c.pockets.iter())
-      .flat_map(|p| p.stacks.iter())
-      .collect()
+    self.worn.iter().flat_map(|i| i.pockets.iter()).flat_map(|p| p.stacks.iter()).collect()
   }
 
   pub fn count_of_matching<F: Fn(&Item) -> bool>(&self, f: F) -> u64 {

@@ -34,7 +34,7 @@ impl ItemStack {
 
   pub fn weight(&self) -> Mass { self.item.get_weight() * self.count }
 
-  pub fn insert_stacks_conv(&mut self, stacks: &mut ItemStacks) -> Option<ItemStacks> {
+  pub fn insert_stacks_separate(&mut self, stacks: &mut ItemStacks) -> Option<ItemStacks> {
     if !self.item.has_free_pockets() {
       return None;
     }
@@ -47,8 +47,8 @@ impl ItemStack {
     Some(m)
   }
 
-  pub fn insert_stacks_recv(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
-    if let Some(m) = self.insert_stacks_conv(&mut stacks) {
+  pub fn insert_stacks_recursive(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
+    if let Some(m) = self.insert_stacks_separate(&mut stacks) {
       stacks.insert_stacks(m);
     }
     Some(stacks)

@@ -9,7 +9,7 @@ pub struct PocketDef {
   pub rigid: bool,
   pub can_store_liquid: bool,
   // pub can_store_gas: bool,
-  pub specify_items: Option<fn(&Item)>,
+  pub specify_items: Option<fn(&Item) -> bool>,
 }
 
 impl PartialEq for PocketDef {
@@ -53,6 +53,12 @@ impl Pocket {
   }
 
   pub fn holdable_count(&self, stack: &ItemStack) -> u64 {
+    if self.closed
+      || (!self.def.can_store_liquid && stack.item.phase == Phase::Liquid)
+      || self.def.specify_items.map(|f| f(&stack.item)) == Some(false)
+    {
+      return 0;
+    }
     let volume_cap: u64 = ((self.capacity - self.volume_used) / stack.item.volume.into()).into();
     let max_hold = volume_cap.min(stack.count);
     if max_hold == 0 {

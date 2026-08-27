@@ -15,7 +15,7 @@ pub struct UseData {
   pub on_use: fn(&mut Player),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Phase {
   Solid,
   Liquid,

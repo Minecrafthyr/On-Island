@@ -43,9 +43,9 @@ impl ItemStacks {
 
   pub const fn new() -> Self { Self(Vec::new()) }
 
-  pub fn insert_item(&mut self, item: Item) { self.insert_items(ItemStack { item, count: 1 }); }
+  pub fn insert_item(&mut self, item: Item) { self.insert_stack(ItemStack { item, count: 1 }); }
 
-  pub fn insert_items(&mut self, stack: ItemStack) {
+  pub fn insert_stack(&mut self, stack: ItemStack) {
     if let Some(f) = self.iter_mut().find(|ei| ei.item == stack.item) {
       f.count += stack.count;
     } else {
@@ -55,7 +55,7 @@ impl ItemStacks {
 
   pub fn insert_stacks(&mut self, stacks: ItemStacks) {
     for stack in stacks.0 {
-      self.insert_items(stack);
+      self.insert_stack(stack);
     }
   }
 
@@ -76,12 +76,12 @@ impl ItemStacks {
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        removed.insert_items(self.swap_remove(i));
+        removed.insert_stack(self.swap_remove(i));
       } else if count < self[i].count {
         self[i].count = self[i].count.saturating_sub(count);
         return (removed, 0);
       } else {
-        removed.insert_items(self.swap_remove(i));
+        removed.insert_stack(self.swap_remove(i));
         return (removed, 0);
       }
     }

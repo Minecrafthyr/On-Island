@@ -7,7 +7,7 @@ pub struct PocketDef {
   pub capacity: Volume,
   pub max_weight: Mass,
   pub rigid: bool,
-  // pub can_store_liquid: bool,
+  pub can_store_liquid: bool,
   // pub can_store_gas: bool,
   pub specify_items: Option<fn(&Item)>,
 }
@@ -62,7 +62,7 @@ impl Pocket {
     max_hold.min(weight_cap)
   }
 
-  pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
+  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
     let count = self.holdable_count(stack);
     if count == 0 {
       return;
@@ -70,17 +70,17 @@ impl Pocket {
     self.volume_used += stack.item.volume * count;
     self.weight += stack.item.weight * count;
     stack.count -= count;
-    self.stacks.insert_items(ItemStack { item: stack.item.clone(), count });
+    self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
   }
 
-  pub fn insert_items(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
-    self.insert_items_from(&mut stack);
+  pub fn insert_stack(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
+    self.insert_stack_from(&mut stack);
     if stack.count == 0 { None } else { Some(stack) }
   }
 
   pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
     for stack in 0..stacks.len() {
-      self.insert_items_from(&mut stacks[stack]);
+      self.insert_stack_from(&mut stacks[stack]);
       if stacks[stack].count == 0 {
         stacks.swap_remove(stack);
       }
@@ -107,32 +107,3 @@ impl Pocket {
     self.remove_items_matching(|ei| ei == item, count);
   }
 }
-// impl Container {
-//   pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
-//     while let Some(pocket) = self.pockets.iter_mut().find(|pocket| pocket.holdable_count(stack) > 0)
-//     {
-//       pocket.insert_items_from(stack);
-//     }
-//   }
-
-//   pub fn insert_items(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
-//     self.insert_items_from(&mut stack);
-//     if stack.count == 0 { None } else { Some(stack) }
-//   }
-
-//   pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
-//     for stack in stacks.iter_mut() {
-//       self.insert_items_from(stack);
-//     }
-//     for i in (0..stacks.len()).rev() {
-//       if stacks[i].count == 0 {
-//         stacks.swap_remove(i);
-//       }
-//     }
-//   }
-
-//   pub fn insert_stacks(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
-//     self.insert_stacks_from(&mut stacks);
-//     if stacks.is_empty() { None } else { Some(stacks) }
-//   }
-// }

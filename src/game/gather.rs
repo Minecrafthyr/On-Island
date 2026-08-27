@@ -33,7 +33,7 @@ impl Game {
     )) else {
       return;
     };
-    let RestorationData { item: _, gather_time, activity, produce, .. } =
+    let RestorationData { item, gather_time, activity, .. } =
       location_data.restore_and_gather[choice].clone();
 
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
@@ -43,15 +43,32 @@ impl Game {
     else {
       return;
     };
-    for _ in 0..count {
-      let (b, e) = gather_time.clone().into_inner();
-      let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
-      self.action_time_pass(Duration::seconds_f64(t), activity);
-      self.player.insert_stacks(produce(
-        &mut self.locations[self.player.location].restore_and_gather[choice],
-      ));
 
-      self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+    loop {
+      use crate::item::GatherStacks::*;
+      match item.gather {
+      None => return,
+      Single(f) =>
+        for _ in 0..count {
+          let (b, e) = gather_time.clone().into_inner();
+          let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
+          self.action_time_pass(Duration::seconds_f64(t), activity);
+          self
+            .player
+            .insert_stacks(f(&mut self.locations[self.player.location].restore_and_gather[choice]));
+
+          self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+        },
+      Multiple(f) => {
+        let (b, e) = gather_time.clone().into_inner();
+        let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
+        self.action_time_pass(Duration::seconds_f64(t), activity);
+        self.player.insert_stacks(f(
+          &mut self.locations[self.player.location].restore_and_gather[choice],
+          count,
+        ));
+      }
+      }
     }
   }
 }

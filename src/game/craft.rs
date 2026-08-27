@@ -7,6 +7,7 @@ use crate::{
   ui::{DataItem, DisplayList, NumberRequester},
 };
 impl Game {
+  // TODO: we need pauseable craft!
   pub fn craft(&mut self) {
     let options: Vec<_> = CRAFTING_RECIPES
       .iter()
@@ -67,11 +68,11 @@ impl Game {
 
   pub fn apply_recipe(&mut self, recipe: &Recipe) -> bool {
     for ids in recipe.inputs.iter().copied() {
-      self.player.insert_items(ItemStack::new(ids.item.into(), ids.count));
+      self.player.insert_stack(ItemStack::new(ids.item.into(), ids.count));
     }
     for ids in recipe.outputs.iter().copied() {
-      if let Some(r) = self.player.insert_items(ids.into()) {
-        self.locations[self.player.location].pickup_stacks.insert_items(r);
+      if let Some(r) = self.player.insert_stack(ids.into()) {
+        self.locations[self.player.location].pickup_stacks.insert_stack(r);
       }
     }
     true

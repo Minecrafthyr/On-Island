@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use time::Duration;
 
-use crate::item::ItemDefStacks;
+use crate::item::*;
 
 #[derive(Clone, Copy)]
 pub struct Recipe {
@@ -20,7 +20,6 @@ impl Recipe {
 
   pub fn outputs_text(&self) -> String { self.outputs.iter().map(ToString::to_string).join(" + ") }
 }
-use crate::item::*;
 
 pub enum RecipeComponents {
   AnyOf(&'static [RecipeComponents]),
@@ -34,7 +33,7 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
     inputs: (&[(TREE_VINE, 1)]).into(),
     outputs: (&[(DRY_TREE_VINE, 1)]).into(),
     time: Duration::hours(1),
-    activity: 1.4,
+    activity: 1.3,
   },
   Recipe {
     id: "vine_backpack",
@@ -42,7 +41,7 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
     inputs: (&[(DRY_TREE_VINE, 5)]).into(),
     outputs: (&[(VINE_BACKPACK, 1)]).into(),
     time: Duration::hours(2),
-    activity: 1.6,
+    activity: 1.4,
   },
   Recipe {
     id: "vine_basket",
@@ -50,6 +49,6 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
     inputs: (&[(DRY_TREE_VINE, 10)]).into(),
     outputs: (&[(VINE_BASKET, 1)]).into(),
     time: Duration::hours(3),
-    activity: 1.6,
+    activity: 1.4,
   },
 ];

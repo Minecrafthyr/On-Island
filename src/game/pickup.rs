@@ -64,7 +64,7 @@ impl Game {
         return;
       };
       self.action_time_pass(pick_time, activity);
-      if let Some(_left) = self.player.insert_items(ItemStack::new(item.clone(), 1)) {
+      if let Some(_left) = self.player.insert_stack(ItemStack::new(item.clone(), 1)) {
         s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };

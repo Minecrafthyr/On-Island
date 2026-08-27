@@ -97,17 +97,17 @@ impl Player {
     self.worn.iter().flat_map(|i| i.pockets.iter()).fold(Mass::ZERO, |v, p| v + p.weight)
   }
 
-  pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
+  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
     for i in &mut self.worn {
-      i.insert_items_from(stack);
+      i.insert_stack_from(stack);
       if stack.count == 0 {
         return;
       }
     }
   }
 
-  pub fn insert_items(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
-    self.insert_items_from(&mut stack);
+  pub fn insert_stack(&mut self, mut stack: ItemStack) -> Option<ItemStack> {
+    self.insert_stack_from(&mut stack);
     if stack.count == 0 { None } else { Some(stack) }
   }
 

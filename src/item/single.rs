@@ -4,6 +4,7 @@ use super::*;
 use crate::{
   builder_method,
   item::container::{Pocket, PocketDef},
+  location::RestorationData,
   player::Player,
   utils::NameAndDesc,
 };
@@ -19,6 +20,13 @@ pub enum Phase {
   Solid,
   Liquid,
 }
+/// TODO: expands to struct, with different requirements
+#[derive(Clone, Copy)]
+pub enum GatherStacks {
+  None,
+  Single(fn(&mut RestorationData) -> ItemStacks),
+  Multiple(fn(&mut RestorationData, u64) -> ItemStacks),
+}
 #[derive(Clone)]
 pub struct ItemDef {
   pub id: &'static str,
@@ -27,6 +35,7 @@ pub struct ItemDef {
   pub phase: Phase,
   pub longest_side: Length,
   pub pockets: &'static [PocketDef],
+  pub gather: GatherStacks,
   pub use_data: Option<UseData>,
 }
 
@@ -45,6 +54,8 @@ impl ItemDef {
 
   builder_method!(phase, Phase);
 
+  builder_method!(gather, GatherStacks);
+
   builder_method!(use_data, Option<UseData>);
 
   builder_method!(pockets, &'static [PocketDef]);
@@ -57,6 +68,7 @@ impl ItemDef {
       phase: Phase::Solid,
       longest_side: Length::ZERO,
       pockets: &[],
+      gather: GatherStacks::None,
       use_data: None,
     }
   }
@@ -99,13 +111,13 @@ impl Item {
         .fold(Volume::ZERO, |v, p| v + p)
   }
 
-  pub fn insert_items_from(&mut self, stack: &mut ItemStack) {
+  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
     if self.pockets.is_empty() {
       return;
     }
     while let Some(pocket) = self.pockets.iter_mut().find(|pocket| pocket.holdable_count(stack) > 0)
     {
-      pocket.insert_items_from(stack);
+      pocket.insert_stack_from(stack);
     }
   }
 
@@ -114,7 +126,7 @@ impl Item {
       return;
     }
     for stack in stacks.iter_mut() {
-      self.insert_items_from(stack);
+      self.insert_stack_from(stack);
     }
     for i in (0..stacks.len()).rev() {
       if stacks[i].count == 0 {

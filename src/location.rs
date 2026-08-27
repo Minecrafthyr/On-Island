@@ -21,7 +21,6 @@ pub struct RestorationData {
   pub count: u64,
   pub gather_time: RangeInclusive<Duration>,
   pub activity: f64,
-  pub produce: fn(&mut Self) -> ItemStacks,
 }
 pub struct LocationData {
   pub pickup_stacks: ItemStacks,
@@ -75,7 +74,19 @@ impl Locations {
     use crate::{item::*, units::*};
     Self([
       LocationData {
-        pickup_stacks: [(BISCUIT, 10), (WATER_BOTTLE, 10), (CANVAS_BACKPACK, 1)].into(),
+        pickup_stacks: [
+          ItemStack::new(
+            {
+              let mut item: Item = PLASTIC_BOTTLE.into();
+              item.pockets[0].stacks.insert_stack((WATER, 500).into());
+              item
+            },
+            10,
+          ),
+          ItemStack::from_def(BISCUIT, 10),
+          ItemStack::from_def(CANVAS_BACKPACK, 1),
+        ]
+        .into(),
         restore_and_gather: vec![],
         can_go: vec![(Location::Beach, seconds(30))],
       },
@@ -83,7 +94,6 @@ impl Locations {
         pickup_stacks: [(BIG_ROCK, 50)].into(),
         restore_and_gather: vec![RestorationData {
           item: RAW_FISH.into(),
-          produce: |_rd| [ItemStack::from_def(RAW_FISH, 1)].into(),
           attempts: 1..=2,
           chance: 0.3,
           limit: 10,
@@ -100,7 +110,6 @@ impl Locations {
         restore_and_gather: vec![
           RestorationData {
             item: TREE.into(),
-            produce: |_rd| [ItemStack::from_def(WOOD, 2)].into(),
             attempts: 1..=1,
             chance: 1.0,
             limit: 600,
@@ -112,7 +121,6 @@ impl Locations {
           },
           RestorationData {
             item: TREE_VINE.into(),
-            produce: |_rd| [ItemStack::from_def(TREE_VINE, 2)].into(),
             attempts: 1..=1,
             chance: 0.8,
             limit: 1000,

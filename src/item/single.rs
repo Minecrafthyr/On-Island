@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use time::Duration;
 
 use super::*;
@@ -19,6 +21,7 @@ pub struct UseData {
 pub enum Phase {
   Solid,
   Liquid,
+  Gas,
 }
 /// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
@@ -37,6 +40,12 @@ pub struct ItemDef {
   pub pockets: &'static [PocketDef],
   pub gather: GatherStacks,
   pub use_data: Option<UseData>,
+}
+
+const impl Mul<u64> for &'static ItemDef {
+  type Output = ItemDefStack;
+
+  fn mul(self, rhs: u64) -> Self::Output { ItemDefStack::new(self, rhs) }
 }
 
 impl NameAndDesc for ItemDef {
@@ -89,6 +98,12 @@ pub struct Item {
   pub pockets: Vec<Pocket>,
 }
 
+impl Mul<u64> for Item {
+  type Output = ItemStack;
+
+  fn mul(self, rhs: u64) -> Self::Output { ItemStack::new(self, rhs) }
+}
+
 impl Item {
   pub const fn new(def: &'static ItemDef) -> Self { Self { def, pockets: Vec::new() } }
 
@@ -128,11 +143,7 @@ impl Item {
     for stack in stacks.iter_mut() {
       self.insert_stack_from(stack);
     }
-    for i in (0..stacks.len()).rev() {
-      if stacks[i].count == 0 {
-        stacks.swap_remove(i);
-      }
-    }
+    *stacks = std::mem::take(stacks).0.into_iter().filter(|stack| stack.count != 0).collect();
   }
 }
 

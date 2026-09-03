@@ -6,6 +6,7 @@
   inherent_associated_types,
   generic_const_exprs,
   const_precise_live_drops,
+  const_ops,
   // transmute_neo
   // mut_restriction,
   // const_array,
@@ -15,7 +16,7 @@
 #![allow(incomplete_features, clippy::missing_transmute_annotations)]
 
 use crate::game::Game;
-pub mod crafting;
+pub mod crafting_recipe;
 pub mod game;
 pub mod io;
 pub mod item;

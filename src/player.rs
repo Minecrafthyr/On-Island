@@ -4,6 +4,7 @@ use crate::{
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   units::*,
+  utils::NameAndDesc,
 };
 
 pub struct DamageDef {
@@ -15,6 +16,41 @@ pub struct Damage {
   pub def: DamageDef,
   pub amount: f64,
 }
+
+pub struct BodyPart {
+  pub id: &'static str,
+}
+impl NameAndDesc for BodyPart {
+  const PREFIX: &str = "body_part";
+
+  fn get_id(&self) -> &str { self.id }
+}
+pub enum BodyPartTree {
+  BodyPart(&'static BodyPart),
+  AllOf(&'static [BodyPartTree]),
+  AnyOf(&'static [BodyPartTree]),
+}
+
+pub struct PlayerActionDef {
+  pub use_body_parts: BodyPartTree,
+  pub effects: &'static [Effect],
+  pub dur: Duration,
+  pub func: fn(&mut Player),
+}
+pub struct PlayerAction {
+  pub using_body_parts: Vec<&'static BodyPart>,
+  pub def: &'static PlayerActionDef,
+  pub progress: Duration,
+}
+pub enum Effect {
+  ActionSpeedMul(f64),
+  ActivityMul(f64),
+  EnergyConsumeMul(f64),
+  WaterConsumeMul(f64),
+  HealthRegenerateMul(f64),
+}
+
+pub const PLAYER_EVENT_DEFS: &[PlayerActionDef] = &[];
 
 pub struct Player {
   pub health: f64,
@@ -160,7 +196,7 @@ impl Player {
   }
 
   pub fn count_of_matching<F: Fn(&Item) -> bool>(&self, f: F) -> u64 {
-    self.get_inventory().iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
+    self.get_inventory().into_iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
   }
 
   pub fn count_of(&self, item: &Item) -> u64 { self.count_of_matching(|ei| ei == item) }

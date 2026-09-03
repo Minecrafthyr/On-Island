@@ -76,12 +76,13 @@ impl ItemStacks {
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        removed.insert_stack(self.swap_remove(i));
-      } else if count < self[i].count {
-        self[i].count = self[i].count.saturating_sub(count);
-        return (removed, 0);
+        removed.insert_stack(self.remove(i));
       } else {
-        removed.insert_stack(self.swap_remove(i));
+        if count < self[i].count {
+          self[i].count = self[i].count.saturating_sub(count);
+        } else {
+          removed.insert_stack(self.remove(i));
+        }
         return (removed, 0);
       }
     }

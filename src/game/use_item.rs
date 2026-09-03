@@ -52,7 +52,7 @@ impl Game {
     let pocket = &mut containers[ci].pockets[pi];
     let new_count = pocket.stacks[ii].count.saturating_sub(1);
     if new_count == 0 {
-      pocket.stacks.swap_remove(ii);
+      pocket.stacks.remove(ii);
     } else {
       pocket.stacks[ii].count = new_count;
     }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::builder_method;
 
 pub struct CloseData {}
 
@@ -8,7 +9,7 @@ pub struct PocketDef {
   pub max_weight: Mass,
   pub rigid: bool,
   pub can_store_liquid: bool,
-  // pub can_store_gas: bool,
+  pub can_store_gas: bool,
   pub specify_items: Option<fn(&Item) -> bool>,
 }
 
@@ -16,6 +17,31 @@ impl PartialEq for PocketDef {
   fn eq(&self, other: &Self) -> bool { self.id == other.id }
 }
 impl Eq for PocketDef {}
+impl PocketDef {
+  builder_method!(specify_items, Option<fn(&Item) -> bool>);
+
+  pub const fn new(id: &'static str, capacity: Volume, max_weight: Mass, rigid: bool) -> Self {
+    Self {
+      id,
+      capacity,
+      max_weight,
+      rigid,
+      can_store_liquid: false,
+      can_store_gas: false,
+      specify_items: None,
+    }
+  }
+
+  pub const fn can_store_liquid(mut self) -> Self {
+    self.can_store_liquid = true;
+    self
+  }
+
+  pub const fn can_store_gas(mut self) -> Self {
+    self.can_store_gas = true;
+    self
+  }
+}
 #[derive(Clone)]
 pub struct Pocket {
   pub def: &'static PocketDef,
@@ -88,7 +114,7 @@ impl Pocket {
     for stack in 0..stacks.len() {
       self.insert_stack_from(&mut stacks[stack]);
       if stacks[stack].count == 0 {
-        stacks.swap_remove(stack);
+        stacks.remove(stack);
       }
     }
   }
@@ -98,8 +124,8 @@ impl Pocket {
     if stacks.is_empty() { None } else { Some(stacks) }
   }
 
-  pub fn remove_items_matching<F: Fn(&Item) -> bool>(
-    &mut self, f: F, count: u64,
+  pub fn remove_items_matching(
+    &mut self, f: impl Fn(&Item) -> bool, count: u64,
   ) -> (ItemStacks, u64) {
     let (removed, mismatch) = self.stacks.remove_items_matching(f, count);
     for is in &removed.0 {

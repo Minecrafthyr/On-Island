@@ -109,11 +109,7 @@ impl<
         if let Some(c) = self.check
           && let Some(f) = c(number)
         {
-          {
-            let this = &mut s;
-            let s = format!("\n{f}{p}");
-            this.lines(s).flush();
-          };
+          s.lines(format!("\n{f}{p}")).flush();
           buf.clear();
           continue;
         }

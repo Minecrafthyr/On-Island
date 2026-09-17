@@ -18,6 +18,7 @@
 use crate::game::Game;
 pub mod crafting_recipe;
 pub mod game;
+pub mod i18n;
 pub mod io;
 pub mod item;
 pub mod location;

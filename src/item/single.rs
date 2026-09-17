@@ -82,6 +82,8 @@ impl ItemDef {
     }
   }
 
+  pub fn item(&'static self) -> Item { Item::from(self) }
+
   pub const fn with_id(id: &'static str) -> Self {
     Self::new(id, Default::default(), Default::default())
   }

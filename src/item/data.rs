@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use rand::random_range;
 
 use crate::item::{container::PocketDef, *};
@@ -28,46 +30,39 @@ macro_rules! defines {
 defines! {
   ItemDef,
   "biscuit": new(mL(100), g(20)).use_data(UseData {
-    dur: seconds(5),
+    dur: 5.seconds(),
     activity: 1.03,
     on_use: |player| {
-    player.energy += hours(1);
-    player.water -= hours(1);
+    player.energy += 1.hours();
+    player.water -= 1.hours();
   },
   }),
   "berry": new(mL(6), g(3)).use_data(UseData {
-    dur: milliseconds(100),
+    dur: 100.milliseconds(),
     activity: 1.02,
     on_use: |player| {
-    player.energy += minutes(2);
-    player.water += minutes(1);
+    player.energy += 2.minutes();
+    player.water += 1.minutes();
   },
   }),
-  "berry_branch": new(mL(300), g(200)),
-  "berry_bush": new(L(6), kg(2)),
-  "berry_bush_harvested": new(L(5), g(1200)),
-  // "water_bottle": new(mL(501), g(502)).use_data(UseData {
-  //   dur: seconds(5),
-  //   activity: 1.03,
-  //   on_use: |player| {
-  //   player.water += hours(2);
-  // },
-  // }),
-  "water": new(mL(1),g(1)).phase(Phase::Liquid),
-  "plastic_bottle": new(mL(521), g(10)).pockets(
-    &[PocketDef::new("plastic_bottle.main", mL(500), g(900), true).can_store_liquid()]
+  "berry_branch": new(300.mL(), 200.g()),
+  "berry_bush": new(6.L(), 2.kg()),
+  "berry_bush_harvested": new(5.L(), 1200.g()),
+  "water": new(1.mL(),1.g()).phase(Phase::Liquid),
+  "plastic_bottle": new(521.mL(), 10.g()).pockets(
+    &[PocketDef::new("plastic_bottle.main", 500.mL(), 900.g(), true).can_store_liquid()]
   ),
-  "raw_fish": new(L(1), g(1200)).gather(
+  "raw_fish": new(1.L(), 1200.g()).gather(
     GatherStacks::Single(|_rd| [ItemStack::from_def(RAW_FISH, 1)].into())
   ).use_data(UseData {
-    dur: seconds(60),
+    dur: 60.seconds(),
     activity: 1.06,
     on_use: |player| {
-    player.energy += hours(2);
-    player.water += minutes(50);
+    player.energy += 2.hours();
+    player.water += 50.minutes();
   },
   }),
-  "tree": new(L(150), kg(100)).gather(
+  "tree": new(150.L(), 100.kg()).gather(
     GatherStacks::Single(|_rd| [
       WOOD * 2,
       STICK * random_range(0..2),
@@ -75,29 +70,35 @@ defines! {
       LEAF * random_range(10..200)
     ].into())
   ),
-  "wood": new(L(50), kg(20)),
-  "stick": new(L(1), g(800)),
-  "tree_stick": new(mL(1300), kg(1)),
-  "leaf": new(mL(40), g(10)),
-  "tree_vine": new(mL(500), g(300)).gather(
+  "wood": new(50.L(), 20.kg()),
+  "stick": new(1.L(), 800.g()),
+  "tree_stick": new(1300.mL(), 1.kg()),
+  "leaf": new(40.mL(), 10.g()),
+  "tree_vine": new(500.mL(), 300.g()).gather(
     GatherStacks::Single(|_rd| [TREE_VINE * 1].into())
   ),
-  "dry_tree_vine": new(mL(400), g(200)),
-  "big_rock": new(L(150), kg(100)),
-  "flint": new(mL(700), g(800)),
-  "rock": new(mL(800), kg(1)),
-  "vine_backpack": new(L(25), g(900)).pockets(
-    &[PocketDef::new("vine_backpack.main", L(18), kg(10), false)]
+  "dry_tree_vine": new(400.mL(), 200.g()),
+  "big_rock": new(150.L(), 100.kg()),
+  "flint": new(700.mL(), 800.g()),
+  "rock": new(800.mL(), 1.kg()),
+  "vine_backpack": new(25.L(), 900.g()).pockets(
+    &[PocketDef::new("vine_backpack.main", 18.L(), 10.kg(), false)]
   ),
   "vine_basket": new(L(50), g(1500)).pockets(
-    &[PocketDef::new("vine_basket.main", L(48), kg(40), true)]
+    &[PocketDef::new("vine_basket.main", 48.L(), 40.kg(), true)]
   ),
   "canvas_backpack": new(L(28), g(700)).pockets(
-    &[PocketDef::new("canvas_backpack.main", L(20), kg(50), true)]
+    &[PocketDef::new("canvas_backpack.main", 20.L(), 50.kg(), true)]
   ),
-  "cotton_underwear": new(L(5), g(1200)).pockets(
-    &[PocketDef::new("cotton_underwear.front_left", mL(300), g(500), false)]
+  "cotton_underwear": new(5.L(), 1200.g()).pockets(
+    &[PocketDef::new("cotton_underwear.front_left", 300.mL(), 500.g(), false)]
   ),
   "cotton_panties": new(L(1), g(200)),
   "fire": new(mL(1), Mass::ZERO).phase(Phase::Gas)
 }
+
+pub static WATER_BOTTLE: LazyLock<Item> = LazyLock::new(|| {
+  let mut item: Item = PLASTIC_BOTTLE.into();
+  item.pockets[0].stacks.insert_stack((WATER, 500).into());
+  item
+});

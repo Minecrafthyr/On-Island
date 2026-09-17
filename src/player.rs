@@ -69,8 +69,8 @@ impl Player {
   pub fn new() -> Self {
     Player {
       health: 1.0,
-      energy: hours(72),
-      water: hours(72),
+      energy: 72.hours(),
+      water: 72.hours(),
       location: Location::StrandedShip,
       activity: 1.0,
       worn: vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()],
@@ -79,11 +79,11 @@ impl Player {
 
   pub fn efficiency(&self) -> f64 {
     let mut base = 1.0;
-    if self.energy < Duration::hours(24) {
-      base *= self.energy.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
+    if self.energy < 24.hours() {
+      base *= self.energy.as_seconds_f64() / 24.hours().as_seconds_f64();
     }
-    if self.water < Duration::hours(24) {
-      base *= self.water.as_seconds_f64() / Duration::hours(24).as_seconds_f64();
+    if self.water < 24.hours() {
+      base *= self.water.as_seconds_f64() / 24.hours().as_seconds_f64();
     }
     if self.health < 0.5 {
       base *= self.health / 0.5;
@@ -96,14 +96,14 @@ impl Player {
     self.energy -= dur;
     self.water -= dur;
 
-    if self.energy <= Duration::hours(24) {
+    if self.energy <= 24.hours() {
       self.health -= 0.001;
     }
-    if self.water <= Duration::hours(24) {
+    if self.water <= 24.hours() {
       self.health -= 0.001;
     }
 
-    if self.energy > Duration::hours(48) && self.water > Duration::hours(48) && self.health < 1.0 {
+    if self.energy > 48.hours() && self.water > 48.hours() && self.health < 1.0 {
       self.energy -= dur;
       self.health += 0.001;
     }
@@ -210,15 +210,15 @@ mod tests {
   fn new_player_starts_with_full_stats() {
     let player = Player::new();
     assert!((player.health - 1.0).abs() < f64::EPSILON);
-    assert_eq!(player.energy, hours(72));
-    assert_eq!(player.water, hours(72));
+    assert_eq!(player.energy, 72.hours());
+    assert_eq!(player.water, 72.hours());
   }
 
   #[test]
   fn tick_decreases_resources() {
     let mut player = Player::new();
     player.tick(1.0);
-    assert!(player.energy < hours(72));
-    assert!(player.water < hours(72));
+    assert!(player.energy < 72.hours());
+    assert!(player.water < 72.hours());
   }
 }

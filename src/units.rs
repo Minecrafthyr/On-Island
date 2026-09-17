@@ -11,8 +11,8 @@ pub trait Zero {
 }
 
 macro_rules! impl_constructors {
-  ($type:ident, $($name:ident : $factor:expr),+ $(,)?) => {
-    impl $type {
+  ($Type:ident, $($name:ident : $factor:expr),+ $(,)?) => {
+    impl $Type {
       $(
         #[allow(non_snake_case)]
         pub const fn $name(value: u64) -> Self {
@@ -28,26 +28,40 @@ macro_rules! impl_constructors {
 
     $(
       #[allow(non_snake_case)]
-      pub const fn $name(value: u64) -> $type {
-        $type::$name(value)
+      pub const fn $name(value: u64) -> $Type {
+        $Type::$name(value)
       }
     )+
 
-    impl $type {
-      fn from_value_and_str(value: u64, s: &str) -> Result<$type, String> {
+    impl $Type {
+      fn from_value_and_str(value: u64, s: &str) -> Result<$Type, String> {
         Ok(match s.to_lowercase().as_str() {
           $(stringify!($name) => $name(value),)+
           _ => return Err("Invalid unit".to_string()),
         })
       }
     }
+    paste! {
+    pub const trait [<To $Type>] where Self:Sized {
+      $(
+      #[allow(non_snake_case)]
+      fn $name(self) -> $Type;
+    )+
+    }
+
+    const impl [<To $Type>] for u64 {
+      $(fn $name(self) -> $Type {
+        $Type::$name(self)
+      })+
+    }
+    }
 
     // 集成 FromStr
-    impl std::str::FromStr for $type {
+    impl std::str::FromStr for $Type {
       type Err = String;
 
       fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut result = $type::default();
+        let mut result = $Type::default();
         let mut last_idx = 0;
         let mut value_buf: Option<u64> = None;
         for (i, c) in s.chars().enumerate() {
@@ -76,62 +90,62 @@ macro_rules! impl_constructors {
 }
 
 macro_rules! impl_traits {
-  ($type:ty) => {
-    impl Add for $type {
+  ($Type:ty) => {
+    impl Add for $Type {
       type Output = Self;
 
       fn add(self, other: Self) -> Self { Self(self.0 + other.0) }
     }
-    impl AddAssign for $type {
+    impl AddAssign for $Type {
       fn add_assign(&mut self, other: Self) { self.0 += other.0; }
     }
-    impl Sub for $type {
+    impl Sub for $Type {
       type Output = Self;
 
       fn sub(self, other: Self) -> Self { Self(self.0 - other.0) }
     }
-    impl SubAssign for $type {
+    impl SubAssign for $Type {
       fn sub_assign(&mut self, other: Self) { self.0 -= other.0; }
     }
-    impl Mul<u64> for $type {
+    impl Mul<u64> for $Type {
       type Output = Self;
 
       fn mul(self, rhs: u64) -> Self { Self(self.0 * rhs) }
     }
-    impl MulAssign<u64> for $type {
+    impl MulAssign<u64> for $Type {
       fn mul_assign(&mut self, rhs: u64) { self.0 *= rhs; }
     }
-    impl Mul<f64> for $type {
+    impl Mul<f64> for $Type {
       type Output = Self;
 
       fn mul(self, rhs: f64) -> Self { Self((self.0 as f64 * rhs) as u64) }
     }
-    impl MulAssign<f64> for $type {
+    impl MulAssign<f64> for $Type {
       fn mul_assign(&mut self, rhs: f64) { self.0 = (self.0 as f64 * rhs) as u64; }
     }
-    impl Div<u64> for $type {
+    impl Div<u64> for $Type {
       type Output = Self;
 
       fn div(self, rhs: u64) -> Self { Self(self.0 / rhs) }
     }
-    impl DivAssign<u64> for $type {
+    impl DivAssign<u64> for $Type {
       fn div_assign(&mut self, rhs: u64) { self.0 /= rhs; }
     }
-    impl std::ops::Neg for $type {
+    impl std::ops::Neg for $Type {
       type Output = Self;
 
       fn neg(self) -> Self { Self(self.0.wrapping_neg()) }
     }
-    impl From<$type> for u64 {
-      fn from(value: $type) -> Self { value.0 }
+    impl From<$Type> for u64 {
+      fn from(value: $Type) -> Self { value.0 }
     }
-    impl From<u64> for $type {
+    impl From<u64> for $Type {
       fn from(value: u64) -> Self { Self(value) }
     }
-    impl std::fmt::Display for $type {
+    impl std::fmt::Display for $Type {
       fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
     }
-    impl Zero for $type {
+    impl Zero for $Type {
       const ZERO: Self = Self::default();
     }
   };
@@ -169,18 +183,46 @@ impl_constructors!(Length, um: 1, mm: K, cm: 10*K, m: M, km: B);
 // const US_PER_H: u64 = US_PER_M * 60;
 // impl_constructors!(Duration, us: 1, ms: US_PER_MS, s: US_PER_S, minutes: US_PER_M, hours: US_PER_H);
 
-#[inline]
-pub const fn milliseconds(milliseconds: i64) -> Duration { Duration::milliseconds(milliseconds) }
-#[inline]
-pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
-#[inline]
-pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }
-#[inline]
-pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }
-#[inline]
-pub const fn days(days: i64) -> Duration { Duration::days(days) }
-#[inline]
-pub const fn weeks(weeks: i64) -> Duration { Duration::weeks(weeks) }
+pub const trait ToDuration {
+  fn milliseconds(self) -> Duration;
+  fn seconds(self) -> Duration;
+  fn minutes(self) -> Duration;
+  fn hours(self) -> Duration;
+  fn days(self) -> Duration;
+  fn weeks(self) -> Duration;
+}
+const impl ToDuration for i64 {
+  #[inline]
+  fn milliseconds(self) -> Duration { Duration::milliseconds(self) }
+
+  #[inline]
+  fn seconds(self) -> Duration { Duration::seconds(self) }
+
+  #[inline]
+  fn minutes(self) -> Duration { Duration::minutes(self) }
+
+  #[inline]
+  fn hours(self) -> Duration { Duration::hours(self) }
+
+  #[inline]
+  fn days(self) -> Duration { Duration::days(self) }
+
+  #[inline]
+  fn weeks(self) -> Duration { Duration::weeks(self) }
+}
+
+// #[inline]
+// pub const fn milliseconds(milliseconds: i64) -> Duration { Duration::milliseconds(milliseconds) }
+// #[inline]
+// pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
+// #[inline]
+// pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }
+// #[inline]
+// pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }
+// #[inline]
+// pub const fn days(days: i64) -> Duration { Duration::days(days) }
+// #[inline]
+// pub const fn weeks(weeks: i64) -> Duration { Duration::weeks(weeks) }
 
 #[derive(Default)]
 pub struct DurationDisplay(pub Duration);

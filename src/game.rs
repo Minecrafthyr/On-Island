@@ -9,7 +9,8 @@ use rand::rngs::ThreadRng;
 use time::Duration;
 
 use crate::{
-  io::ScreenWriter, location::Locations, player::Player, ui::NumberRequester, units::DurationDisplay, utils::NameAndDesc,
+  io::ScreenWriter, location::Locations, player::Player, ui::NumberRequester,
+  units::DurationDisplay, utils::NameAndDesc,
 };
 
 pub mod craft;

@@ -28,6 +28,13 @@ pub struct LocationData {
   pub can_go: Vec<(Location, Duration)>,
 }
 impl LocationData {
+  pub fn new(
+    pickup_stacks: impl Into<ItemStacks>, restore_and_gather: Vec<RestorationData>,
+    can_go: Vec<(Location, Duration)>,
+  ) -> Self {
+    Self { pickup_stacks: pickup_stacks.into(), restore_and_gather, can_go }
+  }
+
   pub fn tick(&mut self, time: Duration, rng: &mut impl Rng) {
     for r in &mut self.restore_and_gather {
       let next_time = r.last_time + r.interval;
@@ -73,50 +80,38 @@ impl Locations {
   pub fn new() -> Self {
     use crate::{item::*, units::*};
     Self([
-      LocationData {
-        pickup_stacks: [
-          ItemStack::new(
-            {
-              let mut item: Item = PLASTIC_BOTTLE.into();
-              item.pockets[0].stacks.insert_stack((WATER, 500).into());
-              item
-            },
-            10,
-          ),
-          ItemStack::from_def(BISCUIT, 10),
-          ItemStack::from_def(CANVAS_BACKPACK, 1),
-        ]
-        .into(),
-        restore_and_gather: vec![],
-        can_go: vec![(Location::Beach, seconds(30))],
-      },
-      LocationData {
-        pickup_stacks: [(BIG_ROCK, 50)].into(),
-        restore_and_gather: vec![RestorationData {
+      LocationData::new(
+        [WATER_BOTTLE.clone() * 10, BISCUIT.item() * 10, CANVAS_BACKPACK.item() * 1],
+        vec![],
+        vec![(Location::Beach, 30.seconds())],
+      ),
+      LocationData::new(
+        [(BIG_ROCK, 50)],
+        vec![RestorationData {
           item: RAW_FISH.into(),
           attempts: 1..=2,
           chance: 0.3,
           limit: 10,
-          interval: minutes(20),
+          interval: 20.minutes(),
           last_time: Duration::ZERO,
           count: 10,
-          gather_time: seconds(120)..=seconds(1200),
+          gather_time: 120.seconds()..=1200.seconds(),
           activity: 1.2,
         }],
-        can_go: vec![(Location::StrandedShip, seconds(40)), (Location::Forest, minutes(3))],
-      },
-      LocationData {
-        pickup_stacks: ItemStacks::new(),
-        restore_and_gather: vec![
+        vec![(Location::StrandedShip, 40.seconds()), (Location::Forest, 3.minutes())],
+      ),
+      LocationData::new(
+        ItemStacks(vec![]),
+        vec![
           RestorationData {
             item: TREE.into(),
             attempts: 1..=1,
             chance: 1.0,
             limit: 600,
-            interval: days(60),
+            interval: 60.days(),
             last_time: Duration::ZERO,
             count: 500,
-            gather_time: seconds(120)..=seconds(1200),
+            gather_time: 120.seconds()..=1200.seconds(),
             activity: 1.2,
           },
           RestorationData {
@@ -124,15 +119,15 @@ impl Locations {
             attempts: 1..=1,
             chance: 0.8,
             limit: 1000,
-            interval: days(10),
+            interval: 10.days(),
             last_time: Duration::ZERO,
             count: 400,
-            gather_time: seconds(10)..=seconds(30),
+            gather_time: 10.seconds()..=30.seconds(),
             activity: 1.1,
           },
         ],
-        can_go: vec![(Location::Beach, minutes(3))],
-      },
+        vec![(Location::Beach, 3.minutes())],
+      ),
     ])
   }
 }

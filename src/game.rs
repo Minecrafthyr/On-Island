@@ -1,4 +1,4 @@
-use std::{fmt::Display, io::stdout, thread::sleep};
+use std::{error::Error, fmt::Display, io::stdout, thread::sleep};
 
 use crossterm::{
   event::{Event, KeyCode, read},
@@ -6,11 +6,16 @@ use crossterm::{
   terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use rand::rngs::ThreadRng;
+use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
 use crate::{
-  io::ScreenWriter, location::Locations, player::Player, ui::NumberRequester,
-  units::DurationDisplay, utils::NameAndDesc,
+  io::ScreenWriter,
+  location::Locations,
+  player::{Action, Player},
+  ui::NumberRequester,
+  units::DurationDisplay,
+  utils::NameAndDesc,
 };
 
 pub mod craft;
@@ -60,6 +65,40 @@ impl Game {
       ld.tick(self.time, &mut self.rng);
     }
   }
+}
+#[derive(
+  Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum WaitActionError {
+  LowEfficiency,
+}
+impl NameAndDesc for WaitActionError {
+  const PREFIX: &str = "wait_action_result";
+
+  fn get_id(&self) -> &str { self.into() }
+}
+impl Error for WaitActionError {}
+impl Display for WaitActionError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
+}
+impl Game {
+  pub fn wait_player_action(&mut self, id: &'static str) -> Result<(), WaitActionError> {
+    while let Some(_) = self.player.actions.iter().find(|a| a.id == id) {
+      self.tick();
+      if self.player.get_efficiency() < 0.25 {
+        return Err(WaitActionError::LowEfficiency);
+      }
+    }
+    Ok(())
+  }
+
+  pub fn player_action(&mut self, action: Action) -> Result<(), Box<dyn Error>> {
+    let id = action.id;
+    self.player.try_push_action(action)?;
+    self.wait_player_action(id)?;
+    Ok(())
+  }
 
   pub fn time_pass(&mut self, time: Duration) {
     if time.is_zero() {
@@ -68,17 +107,6 @@ impl Game {
     for _ in 0..=time.whole_milliseconds() {
       self.tick();
     }
-  }
-
-  pub fn action_time_pass(&mut self, time: Duration, activity: f64) {
-    let mut progress = Duration::ZERO;
-    self.player.activity = activity;
-    while progress < time {
-      self.tick();
-      let step = Duration::MILLISECOND * self.player.efficiency();
-      progress += step;
-    }
-    self.player.activity = 1.0;
   }
 
   fn render(&mut self) {

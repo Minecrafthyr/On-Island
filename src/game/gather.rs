@@ -5,6 +5,7 @@ use crate::{
   game::Game,
   io::ScreenWriter,
   location::RestorationData,
+  player::{Action, ActionContent, Effect},
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
@@ -52,21 +53,49 @@ impl Game {
         for _ in 0..count {
           let (b, e) = gather_time.clone().into_inner();
           let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
-          self.action_time_pass(Duration::seconds_f64(t), activity);
-          self
-            .player
-            .insert_stacks(f(&mut self.locations[self.player.location].restore_and_gather[choice]));
-
-          self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+          match self.player_action(Action::no_progress(
+            "gather",
+            move |_| ActionContent {
+              body_parts: vec![],
+              effects: vec![Effect::ActivityMul(activity)],
+            },
+            Duration::seconds_f64(t),
+          )) {
+          Ok(()) => {
+            self.player.insert_stacks(f(
+              &mut self.locations[self.player.location].restore_and_gather[choice]
+            ));
+            self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+          }
+          Err(not_ok) => {
+            s.message(not_ok.to_string());
+            return;
+          }
+          }
         },
       Multiple(f) => {
         let (b, e) = gather_time.clone().into_inner();
         let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
-        self.action_time_pass(Duration::seconds_f64(t), activity);
-        self.player.insert_stacks(f(
-          &mut self.locations[self.player.location].restore_and_gather[choice],
-          count,
-        ));
+        match self.player_action(Action::no_progress(
+          "gather",
+          move |_| ActionContent {
+            body_parts: vec![],
+            effects: vec![Effect::ActivityMul(activity)],
+          },
+          Duration::seconds_f64(t),
+        )) {
+        Ok(()) => {
+          self.player.insert_stacks(f(
+            &mut self.locations[self.player.location].restore_and_gather[choice],
+            count,
+          ));
+          self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+        }
+        Err(not_ok) => {
+          s.message(not_ok.to_string());
+          return;
+        }
+        }
       }
       }
     }

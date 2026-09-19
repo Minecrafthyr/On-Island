@@ -1,3 +1,7 @@
+use std::{error::Error, fmt::Display, sync::Arc};
+
+use itertools::Itertools;
+use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
 use crate::{
@@ -20,27 +24,32 @@ pub struct Damage {
 pub struct BodyPart {
   pub id: &'static str,
 }
+impl PartialEq for BodyPart {
+  fn eq(&self, other: &Self) -> bool { self.id == other.id }
+}
 impl NameAndDesc for BodyPart {
   const PREFIX: &str = "body_part";
 
   fn get_id(&self) -> &str { self.id }
 }
-pub enum BodyPartTree {
-  BodyPart(&'static BodyPart),
-  AllOf(&'static [BodyPartTree]),
-  AnyOf(&'static [BodyPartTree]),
+type IsExclusive = bool;
+pub struct ActionContent {
+  pub body_parts: Vec<(&'static BodyPart, IsExclusive)>,
+  pub effects: Vec<Effect>,
 }
-
-pub struct PlayerActionDef {
-  pub use_body_parts: BodyPartTree,
-  pub effects: &'static [Effect],
-  pub dur: Duration,
-  pub func: fn(&mut Player),
-}
-pub struct PlayerAction {
-  pub using_body_parts: Vec<&'static BodyPart>,
-  pub def: &'static PlayerActionDef,
+#[derive(Clone)]
+pub struct Action {
+  pub id: &'static str,
+  pub func: Arc<dyn Fn(&mut Player) -> ActionContent>,
   pub progress: Duration,
+  pub total_dur: Duration,
+}
+impl Action {
+  pub fn no_progress(
+    id: &'static str, f: impl Fn(&mut Player) -> ActionContent + 'static, total_dur: Duration,
+  ) -> Self {
+    Self { id, func: Arc::new(f), progress: Duration::ZERO, total_dur }
+  }
 }
 pub enum Effect {
   ActionSpeedMul(f64),
@@ -50,14 +59,14 @@ pub enum Effect {
   HealthRegenerateMul(f64),
 }
 
-pub const PLAYER_EVENT_DEFS: &[PlayerActionDef] = &[];
-
 pub struct Player {
   pub health: f64,
   pub energy: Duration,
   pub water: Duration,
   pub location: Location,
-  pub activity: f64,
+  pub actions: Vec<Action>,
+  pub used_body_parts: Vec<(&'static BodyPart, IsExclusive)>,
+  pub effects: Vec<Effect>,
   pub worn: Vec<Item>,
 }
 
@@ -66,18 +75,89 @@ impl Default for Player {
 }
 
 impl Player {
+  pub fn get_activity(&self) -> f64 {
+    self.effects.iter().fold(1.0, |base, effect| {
+      if let Effect::ActivityMul(mul) = effect { base * mul } else { base }
+    })
+  }
+
+  fn eval_actions(&mut self) {
+    let funcs: Vec<_> = self.actions.iter().map(|a| a.func.clone()).collect();
+    'func: for f in funcs {
+      let ActionContent { body_parts, effects } = (f)(self);
+      for (bp, is_exclusive) in body_parts {
+        if let Some((_, e_is_exclusive)) =
+          self.used_body_parts.iter_mut().find(|(ebp, _)| *ebp == bp)
+        {
+          if *e_is_exclusive {
+            continue 'func;
+          } else if is_exclusive {
+            *e_is_exclusive = true;
+          }
+        } else {
+          self.used_body_parts.push((bp, is_exclusive));
+        }
+      }
+      self.effects.extend(effects);
+    }
+  }
+
+  fn tick_actions(&mut self) {
+    let mut action_idx = 0;
+    while action_idx < self.actions.len() {
+      let efficiency = 1.milliseconds() * self.get_efficiency();
+      let action = &mut self.actions[action_idx];
+      action.progress += efficiency;
+      if action.progress > action.total_dur {
+        self.actions.remove(action_idx);
+        self.eval_actions();
+      } else {
+        action_idx += 1;
+      }
+    }
+  }
+}
+#[derive(
+  Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum PushActionError {
+  BodyPartUsed,
+}
+impl NameAndDesc for PushActionError {
+  const PREFIX: &str = "wait_action_result";
+
+  fn get_id(&self) -> &str { self.into() }
+}
+impl Error for PushActionError {}
+impl Display for PushActionError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
+}
+impl Player {
+  pub fn try_push_action(&mut self, action: Action) -> Result<(), PushActionError> {
+    let ActionContent { body_parts, effects: _ } = (action.func)(self);
+    for (bp, _is_exclusive) in body_parts {
+      if self.used_body_parts.iter_mut().contains(&(bp, true)) {
+        return Err(PushActionError::BodyPartUsed);
+      }
+    }
+    Ok(())
+  }
+
   pub fn new() -> Self {
     Player {
       health: 1.0,
       energy: 72.hours(),
       water: 72.hours(),
       location: Location::StrandedShip,
-      activity: 1.0,
+      actions: vec![],
+      used_body_parts: vec![],
+      effects: vec![],
       worn: vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()],
     }
   }
 
-  pub fn efficiency(&self) -> f64 {
+  pub fn get_efficiency(&self) -> f64 {
     let mut base = 1.0;
     if self.energy < 24.hours() {
       base *= self.energy.as_seconds_f64() / 24.hours().as_seconds_f64();
@@ -95,6 +175,7 @@ impl Player {
     let dur = Duration::MILLISECOND * activity;
     self.energy -= dur;
     self.water -= dur;
+    self.tick_actions();
 
     if self.energy <= 24.hours() {
       self.health -= 0.001;
@@ -109,9 +190,9 @@ impl Player {
     }
   }
 
-  pub fn max_carry_weight(&self) -> Mass { kg(60) * self.efficiency() }
+  pub fn max_carry_weight(&self) -> Mass { kg(60) * self.get_efficiency() }
 
-  pub fn max_pickup_weight(&self) -> Mass { kg(20) * self.efficiency() }
+  pub fn max_pickup_weight(&self) -> Mass { kg(20) * self.get_efficiency() }
 
   pub fn max_carry_volume(&self) -> Volume {
     L(10) + self.worn.iter().fold(Volume::ZERO, |v, i| v + i.volume)
@@ -185,9 +266,9 @@ impl Player {
     let weight_factor = if weight > 0.0 { 1.0 + (weight / 10.0).ln().max(0.0) * 0.1 } else { 1.0 };
 
     let activity_factor = 1.0 + (weight / 5.0).sqrt() * 0.3;
-    let activity = (base_activity * activity_factor) / self.efficiency();
+    let activity = (base_activity * activity_factor) / self.get_efficiency();
 
-    let time_seconds = base_time * weight_factor * self.efficiency();
+    let time_seconds = base_time * weight_factor * self.get_efficiency();
     Some((Duration::seconds_f64(time_seconds), activity))
   }
 

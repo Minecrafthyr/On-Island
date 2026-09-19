@@ -96,12 +96,13 @@ action:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号
     entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) - %{description}"
-  craft:
+  crafting:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
     how_many: 制作多少次？
     entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
     empty: 你当前没有足够的材料来进行任何合成。
+    incorrupted: 合成终止。
   travel:
     title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点

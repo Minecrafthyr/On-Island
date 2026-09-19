@@ -2,6 +2,7 @@ use crate::{
   game::Game,
   io::ScreenWriter,
   item::ItemStack,
+  player::{Action, ActionContent, Effect},
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
@@ -63,12 +64,23 @@ impl Game {
         s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
-      self.action_time_pass(pick_time, activity);
-      if let Some(_left) = self.player.insert_stack(ItemStack::new(item.clone(), 1)) {
-        s.message(t!("action.pickup.remaining", count = count - i));
+      match self.player_action(Action::no_progress(
+        "gather",
+        move |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(activity)] },
+        pick_time,
+      )) {
+      Ok(()) => {
+        if let Some(_left) = self.player.insert_stack(ItemStack::new(item.clone(), 1)) {
+          s.message(t!("action.pickup.remaining", count = count - i));
+          return;
+        };
+        self.locations[location_index].pickup_stacks.remove_items(&item, 1);
+      }
+      Err(not_ok) => {
+        s.message(not_ok.to_string());
         return;
-      };
-      self.locations[location_index].pickup_stacks.remove_items(&item, 1);
+      }
+      }
     }
   }
 }

@@ -129,17 +129,16 @@ impl Item {
   }
 
   pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
-    if self.pockets.is_empty() {
+    if !self.has_free_pockets() {
       return;
     }
-    while let Some(pocket) = self.pockets.iter_mut().find(|pocket| pocket.holdable_count(stack) > 0)
-    {
+    while let Some(pocket) = self.pockets.iter_mut().find(|p| p.holdable_count(stack) > 0) {
       pocket.insert_stack_from(stack);
     }
   }
 
   pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
-    if self.pockets.is_empty() {
+    if !self.has_free_pockets() {
       return;
     }
     for stack in stacks.iter_mut() {

@@ -6,7 +6,7 @@ use crate::{
   crafting_recipe::{CRAFTING_RECIPES, RecipeDepends, RecipeRequirements, RecipeStep},
   game::Game,
   io::ScreenWriter,
-  player::Player,
+  player::{Action, ActionContent, Effect, Player},
   ui::{DataItem, DisplayList, NumberRequester},
 };
 pub fn test_req(p: &Player, req: &RecipeRequirements) -> u64 {
@@ -26,6 +26,7 @@ pub fn max_batch_count(p: &Player, depends: &RecipeDepends) -> u64 {
   Req(req) => test_req(p, req),
   }
 }
+
 impl Game {
   // TODO: we need pauseable craft and one by one taking recipe req :)
   pub fn craft(&mut self) {
@@ -39,7 +40,7 @@ impl Game {
     let options: Vec<_> = CRAFTING_RECIPES.iter().collect();
     let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
-      Some(t!("action.craft.title")),
+      Some(t!("action.crafting.title")),
       options
         .iter()
         .enumerate()
@@ -57,7 +58,7 @@ impl Game {
       return;
     };
     let recipe = options[choice];
-    let Some(batch_count) = NumberRequester::new(t!("action.craft.how_many"))
+    let Some(batch_count) = NumberRequester::new(t!("action.crafting.how_many"))
       .range(1..=max_batch_count(&self.player, &recipe.steps[0].inputs)) // TODO: fix this
       .default(1)
       .request()
@@ -66,8 +67,19 @@ impl Game {
     };
     for _ in 0..batch_count {
       for rs in recipe.steps.iter() {
-        self.action_time_pass(rs.time, rs.activity);
-        self.apply_recipe_step(rs);
+        match self.player_action(Action::no_progress(
+          "crafting",
+          |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(rs.activity)] },
+          rs.time,
+        )) {
+        Ok(()) => {
+          self.apply_recipe_step(rs);
+        }
+        Err(not_ok) => {
+          s.message(not_ok.to_string());
+          return;
+        }
+        }
       }
     }
   }

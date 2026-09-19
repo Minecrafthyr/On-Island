@@ -1,6 +1,7 @@
 use crate::{
   game::Game,
   io::ScreenWriter,
+  player::{Action, ActionContent, Effect},
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };
@@ -31,7 +32,18 @@ impl Game {
     };
 
     let (new_location, travel_time) = options[choice];
-    self.action_time_pass(travel_time, 1.4);
-    self.player.location = new_location;
+    match self.player_action(Action::no_progress(
+      "travel",
+      move |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(1.4)] },
+      travel_time,
+    )) {
+    Ok(()) => {
+      self.player.location = new_location;
+    }
+    Err(not_ok) => {
+      s.message(not_ok.to_string());
+      return;
+    }
+    }
   }
 }

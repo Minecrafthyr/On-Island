@@ -1,12 +1,14 @@
 use crate::{
   game::Game,
   io::ScreenWriter,
+  player::{Action, ActionContent, Effect},
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };
 
 impl Game {
   pub fn use_item(&mut self) {
+    let mut s = ScreenWriter::new_screen();
     let (ci, pi, ii, _, use_data) = {
       let mut options = Vec::new();
       for (ci, c) in self.player.worn.iter_mut().enumerate() {
@@ -21,7 +23,6 @@ impl Game {
       if options.is_empty() {
         return;
       }
-      let mut s = ScreenWriter::new_screen();
       let Some(choice) = s.list(DisplayList::new(
         Some(t!("action.use_item.title")),
         options
@@ -46,16 +47,29 @@ impl Game {
       };
       options[choice]
     };
-
-    self.action_time_pass(use_data.dur, self.player.activity);
-    let mut containers: Vec<_> = self.player.worn.iter_mut().collect();
-    let pocket = &mut containers[ci].pockets[pi];
-    let new_count = pocket.stacks[ii].count.saturating_sub(1);
-    if new_count == 0 {
-      pocket.stacks.remove(ii);
-    } else {
-      pocket.stacks[ii].count = new_count;
+    match self.player_action(Action::no_progress(
+      "use_item",
+      move |_| ActionContent {
+        body_parts: vec![],
+        effects: vec![Effect::ActivityMul(use_data.activity)],
+      },
+      use_data.dur,
+    )) {
+    Ok(()) => {
+      let mut containers: Vec<_> = self.player.worn.iter_mut().collect();
+      let pocket = &mut containers[ci].pockets[pi];
+      let new_count = pocket.stacks[ii].count.saturating_sub(1);
+      if new_count == 0 {
+        pocket.stacks.remove(ii);
+      } else {
+        pocket.stacks[ii].count = new_count;
+      }
+      (use_data.on_use)(&mut self.player);
     }
-    (use_data.on_use)(&mut self.player);
+    Err(not_ok) => {
+      s.message(not_ok.to_string());
+      return;
+    }
+    }
   }
 }

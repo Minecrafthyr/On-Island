@@ -124,10 +124,10 @@ impl Pocket {
     if stacks.is_empty() { None } else { Some(stacks) }
   }
 
-  pub fn remove_items_matching(
+  pub fn take_items_matching(
     &mut self, f: impl Fn(&Item) -> bool, count: u64,
   ) -> (ItemStacks, u64) {
-    let (removed, mismatch) = self.stacks.remove_items_matching(f, count);
+    let (removed, mismatch) = self.stacks.take_items_matching(f, count);
     for is in &removed.0 {
       self.volume_used -= is.volume();
       self.weight -= is.weight();
@@ -136,6 +136,6 @@ impl Pocket {
   }
 
   pub fn remove_items(&mut self, item: &Item, count: u64) {
-    self.remove_items_matching(|ei| ei == item, count);
+    self.take_items_matching(|ei| ei == item, count);
   }
 }

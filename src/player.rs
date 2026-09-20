@@ -122,6 +122,7 @@ impl Player {
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum PushActionError {
+  NoSuchBodyPart,
   BodyPartUsed,
 }
 impl NameAndDesc for PushActionError {
@@ -242,17 +243,16 @@ impl Player {
     if stacks.is_empty() { None } else { Some(stacks) }
   }
 
-  pub fn remove_items_matching<F: Fn(&Item) -> bool>(
-    &mut self, f: F, count: u64,
-  ) -> (Vec<ItemStack>, u64) {
-    let mut removed = Vec::new();
-    let mut mismatch = 0u64;
+  pub fn take_items_matching<F: Fn(&Item) -> bool>(
+    &mut self, f: F, mut count: u64,
+  ) -> (ItemStacks, u64) {
+    let mut removed = ItemStacks::new();
     for p in self.worn.iter_mut().flat_map(|i| i.pockets.iter_mut()) {
-      let (mut r, m) = p.remove_items_matching(&f, count);
-      removed.append(&mut r);
-      mismatch += m;
+      let (r, m) = p.take_items_matching(&f, count);
+      removed.insert_stacks(r);
+      count = m;
     }
-    (removed, mismatch)
+    (removed, count)
   }
 
   pub fn pickup_time(&self, item: &Item) -> Option<(Duration, f64)> {

@@ -91,9 +91,9 @@ impl Game {
       }
       use crate::crafting_recipe::ItemRequirements::*;
       match req.item {
-      Def(item_def) => p.remove_items_matching(|i| i.def == item_def, req.count),
-      Defs(item_defs) => p.remove_items_matching(|i| item_defs.contains(&i.def), req.count),
-      Fn(f) => p.remove_items_matching(f, req.count),
+      Def(item_def) => p.take_items_matching(|i| i.def == item_def, req.count),
+      Defs(item_defs) => p.take_items_matching(|i| item_defs.contains(&i.def), req.count),
+      Fn(f) => p.take_items_matching(f, req.count),
       };
     }
     pub fn take_depends(p: &mut Player, depends: &RecipeDepends) {

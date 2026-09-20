@@ -146,6 +146,21 @@ impl Item {
     }
     *stacks = std::mem::take(stacks).0.into_iter().filter(|stack| stack.count != 0).collect();
   }
+
+  pub fn take_items_matching(
+    &mut self, f: impl Fn(&Item) -> bool, mut count: u64,
+  ) -> (ItemStacks, u64) {
+    let mut removed_total = ItemStacks::new();
+    for p in &mut self.pockets {
+      let (removed, mismatch) = p.take_items_matching(&f, count);
+      removed_total.insert_stacks(removed);
+      count = mismatch;
+      if count == 0 {
+        break;
+      }
+    }
+    (removed_total, count)
+  }
 }
 
 impl Deref for Item {

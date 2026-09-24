@@ -1,24 +1,33 @@
-use std::{error::Error, fmt::Display, sync::Arc};
+use std::{borrow::Cow, error::Error, fmt::Display, sync::Arc};
 
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
 use crate::{
+  game::end_game,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
+  player::action::Action,
   units::*,
   utils::NameAndDesc,
 };
-
-pub struct DamageDef {
-  pub death_message: &'static str,
-  pub log_message: &'static str,
-}
+pub mod action;
 
 pub struct Damage {
-  pub def: DamageDef,
+  pub id: &'static str,
   pub amount: f64,
+}
+
+impl NameAndDesc for Damage {
+  const PREFIX: &str = "damage";
+
+  fn get_id(&self) -> &str { self.id }
+}
+impl Damage {
+  pub fn new(id: &'static str, amount: f64) -> Self { Self { id, amount } }
+
+  pub fn death_message(&self) -> Cow<'_, str> { t!(format!("{}.death", self.get_id())) }
 }
 
 pub struct BodyPart {
@@ -33,24 +42,6 @@ impl NameAndDesc for BodyPart {
   fn get_id(&self) -> &str { self.id }
 }
 type IsExclusive = bool;
-pub struct ActionContent {
-  pub body_parts: Vec<(&'static BodyPart, IsExclusive)>,
-  pub effects: Vec<Effect>,
-}
-#[derive(Clone)]
-pub struct Action {
-  pub id: &'static str,
-  pub func: Arc<dyn Fn(&mut Player) -> ActionContent>,
-  pub progress: Duration,
-  pub total_dur: Duration,
-}
-impl Action {
-  pub fn no_progress(
-    id: &'static str, f: impl Fn(&mut Player) -> ActionContent + 'static, total_dur: Duration,
-  ) -> Self {
-    Self { id, func: Arc::new(f), progress: Duration::ZERO, total_dur }
-  }
-}
 pub enum Effect {
   ActionSpeedMul(f64),
   ActivityMul(f64),
@@ -80,71 +71,8 @@ impl Player {
       if let Effect::ActivityMul(mul) = effect { base * mul } else { base }
     })
   }
-
-  fn eval_actions(&mut self) {
-    let funcs: Vec<_> = self.actions.iter().map(|a| a.func.clone()).collect();
-    'func: for f in funcs {
-      let ActionContent { body_parts, effects } = (f)(self);
-      for (bp, is_exclusive) in body_parts {
-        if let Some((_, e_is_exclusive)) =
-          self.used_body_parts.iter_mut().find(|(ebp, _)| *ebp == bp)
-        {
-          if *e_is_exclusive {
-            continue 'func;
-          } else if is_exclusive {
-            *e_is_exclusive = true;
-          }
-        } else {
-          self.used_body_parts.push((bp, is_exclusive));
-        }
-      }
-      self.effects.extend(effects);
-    }
-  }
-
-  fn tick_actions(&mut self) {
-    let mut action_idx = 0;
-    while action_idx < self.actions.len() {
-      let efficiency = 1.milliseconds() * self.get_efficiency();
-      let action = &mut self.actions[action_idx];
-      action.progress += efficiency;
-      if action.progress > action.total_dur {
-        self.actions.remove(action_idx);
-        self.eval_actions();
-      } else {
-        action_idx += 1;
-      }
-    }
-  }
-}
-#[derive(
-  Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
-)]
-#[strum(serialize_all = "snake_case")]
-pub enum PushActionError {
-  NoSuchBodyPart,
-  BodyPartUsed,
-}
-impl NameAndDesc for PushActionError {
-  const PREFIX: &str = "wait_action_result";
-
-  fn get_id(&self) -> &str { self.into() }
-}
-impl Error for PushActionError {}
-impl Display for PushActionError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
 }
 impl Player {
-  pub fn try_push_action(&mut self, action: Action) -> Result<(), PushActionError> {
-    let ActionContent { body_parts, effects: _ } = (action.func)(self);
-    for (bp, _is_exclusive) in body_parts {
-      if self.used_body_parts.iter_mut().contains(&(bp, true)) {
-        return Err(PushActionError::BodyPartUsed);
-      }
-    }
-    Ok(())
-  }
-
   pub fn new() -> Self {
     Player {
       health: 1.0,
@@ -172,6 +100,13 @@ impl Player {
     base
   }
 
+  pub fn damage(&mut self, dmg: Damage) {
+    self.health -= dmg.amount;
+    if self.health < 0.0 {
+      end_game(dmg.death_message());
+    }
+  }
+
   pub fn tick(&mut self, activity: f64) {
     let dur = Duration::MILLISECOND * activity;
     self.energy -= dur;
@@ -179,10 +114,10 @@ impl Player {
     self.tick_actions();
 
     if self.energy <= 24.hours() {
-      self.health -= 0.001;
+      self.damage(Damage::new("starve", 0.001));
     }
     if self.water <= 24.hours() {
-      self.health -= 0.001;
+      self.damage(Damage::new("dehydrate", 0.001));
     }
 
     if self.energy > 48.hours() && self.water > 48.hours() && self.health < 1.0 {

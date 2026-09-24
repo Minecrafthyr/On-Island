@@ -3,14 +3,17 @@ use std::borrow::Cow;
 use itertools::Itertools;
 
 use crate::{
-  crafting_recipe::{CRAFTING_RECIPES, RecipeDepends, RecipeRequirements, RecipeStep},
+  crafting::{CRAFTING_RECIPES, RecipeDepends, RecipeRequirements, RecipeStep},
   game::Game,
   io::ScreenWriter,
-  player::{Action, ActionContent, Effect, Player},
+  player::{
+    Effect, Player,
+    action::{Action, ActionContent},
+  },
   ui::{DataItem, DisplayList, NumberRequester},
 };
 pub fn test_req(p: &Player, req: &RecipeRequirements) -> u64 {
-  use crate::crafting_recipe::ItemRequirements::*;
+  use crate::crafting::ItemRequirements::*;
   let matched = match req.item {
   Def(item_def) => p.count_of_matching(|i| i.def == item_def),
   Defs(item_defs) => p.count_of_matching(|i| item_defs.contains(&i.def)),
@@ -69,7 +72,7 @@ impl Game {
       for rs in recipe.steps.iter() {
         match self.player_action(Action::no_progress(
           "crafting",
-          |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(rs.activity)] },
+          |_| ActionContent::new(vec![], vec![Effect::ActivityMul(rs.activity)]),
           rs.time,
         )) {
         Ok(()) => {
@@ -89,7 +92,7 @@ impl Game {
       if !req.consume {
         return;
       }
-      use crate::crafting_recipe::ItemRequirements::*;
+      use crate::crafting::ItemRequirements::*;
       match req.item {
       Def(item_def) => p.take_items_matching(|i| i.def == item_def, req.count),
       Defs(item_defs) => p.take_items_matching(|i| item_defs.contains(&i.def), req.count),

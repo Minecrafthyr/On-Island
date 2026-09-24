@@ -67,13 +67,15 @@ attribute:
 game:
   title: "=== 在岛上 ==="
   stats: "%{name}: %{value}"
-  status_line: "位置: %{location}\n[t]旅行 [p]拾取 [g]采集 [c]合成 [u]使用物品 [i]查看物品栏 [r]休息 [q]退出"
+  status_line: "位置: %{location}\n[t]旅行 [p]拾取 [g]采集 [c]合成 [u]使用物品 [i]物品栏 [w]穿戴 [r]休息 [q]退出"
   over: "游戏结束！\n%{message}"
   over_message: "游戏结束：%{message}"
-  starved: 你被饿死了！
-  dehydrated: 你被渴死了！
-  injured: 你伤重而死！
   quit: 你关闭了游戏。
+damage:
+  starve: 你被饿死了！
+  dehydrate: 你被渴死了！
+  injure: 你伤重而死！
+  generic: 你死了！
 action:
   inventory:
     title: 物品栏
@@ -107,13 +109,13 @@ action:
     title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}"
-crafting:
-  dry_tree_vine:
-    name: 烤干树藤
-  vine_backpack:
-    name: 编织树藤背包
-  vine_basket:
-    name: 编织树藤筐
+# crafting:
+#   dry_tree_vine:
+#     name: 烤干树藤
+#   vine_backpack:
+#     name: 编织树藤背包
+#   vine_basket:
+#     name: 编织树藤筐
 ui:
   dur:
     w: "周"

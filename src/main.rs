@@ -16,7 +16,7 @@
 #![allow(incomplete_features, clippy::missing_transmute_annotations)]
 
 use crate::game::Game;
-pub mod crafting_recipe;
+pub mod crafting;
 pub mod game;
 pub mod i18n;
 pub mod io;
@@ -29,5 +29,8 @@ pub mod utils;
 
 #[macro_use]
 extern crate rust_i18n;
-i18n!("locales", fallback = "zh_CN");
-fn main() -> Result<(), Box<dyn std::error::Error>> { Game::new()?.run() }
+i18n!("locales", fallback = "en_US");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  rust_i18n::set_locale("zh_CN");
+  Game::new()?.run()
+}

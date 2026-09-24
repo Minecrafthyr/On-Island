@@ -1,7 +1,10 @@
 use crate::{
   game::Game,
   io::ScreenWriter,
-  player::{Action, ActionContent, Effect},
+  player::{
+    Effect,
+    action::{Action, ActionContent},
+  },
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };

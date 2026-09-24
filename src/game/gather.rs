@@ -5,7 +5,10 @@ use crate::{
   game::Game,
   io::ScreenWriter,
   location::RestorationData,
-  player::{Action, ActionContent, Effect},
+  player::{
+    Effect,
+    action::{Action, ActionContent},
+  },
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
@@ -55,10 +58,7 @@ impl Game {
           let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
           match self.player_action(Action::no_progress(
             "gather",
-            move |_| ActionContent {
-              body_parts: vec![],
-              effects: vec![Effect::ActivityMul(activity)],
-            },
+            move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
             Duration::seconds_f64(t),
           )) {
           Ok(()) => {
@@ -78,10 +78,7 @@ impl Game {
         let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
         match self.player_action(Action::no_progress(
           "gather",
-          move |_| ActionContent {
-            body_parts: vec![],
-            effects: vec![Effect::ActivityMul(activity)],
-          },
+          move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
           Duration::seconds_f64(t),
         )) {
         Ok(()) => {

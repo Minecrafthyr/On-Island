@@ -2,7 +2,10 @@ use crate::{
   game::Game,
   io::ScreenWriter,
   item::ItemStack,
-  player::{Action, ActionContent, Effect},
+  player::{
+    Effect,
+    action::{Action, ActionContent},
+  },
   ui::{DataItem, DisplayList, NumberRequester},
   utils::NameAndDesc,
 };
@@ -66,7 +69,7 @@ impl Game {
       };
       match self.player_action(Action::no_progress(
         "gather",
-        move |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(activity)] },
+        move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
         pick_time,
       )) {
       Ok(()) => {

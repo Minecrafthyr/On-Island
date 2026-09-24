@@ -1,7 +1,10 @@
 use crate::{
   game::Game,
   io::ScreenWriter,
-  player::{Action, ActionContent, Effect},
+  player::{
+    Effect,
+    action::{Action, ActionContent},
+  },
   ui::{DataItem, DisplayList},
   utils::NameAndDesc,
 };
@@ -34,7 +37,7 @@ impl Game {
     let (new_location, travel_time) = options[choice];
     match self.player_action(Action::no_progress(
       "travel",
-      move |_| ActionContent { body_parts: vec![], effects: vec![Effect::ActivityMul(1.4)] },
+      move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)]),
       travel_time,
     )) {
     Ok(()) => {

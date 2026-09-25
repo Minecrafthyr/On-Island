@@ -97,7 +97,9 @@ action:
   use_item:
     title: 有以下物品可供使用：
     choose: 请选择要使用的物品编号
-    entry: "[%{index}] %{name} ×%{count} (每个%{duration}秒，%{activity}×活动) - %{description}"
+    entry: "[%{index}] %{name} ×%{count} - %{description}"
+    data.title: "使用%{item}"
+    data: "[%{index}] %{name} (每个%{duration}秒，%{activity}×活动) - %{description}"
   crafting:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号

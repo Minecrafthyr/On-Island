@@ -65,7 +65,7 @@ impl Player {
   pub(super) fn tick_actions(&mut self) {
     let mut action_idx = 0;
     while action_idx < self.actions.len() {
-      let efficiency = 1.milliseconds() * self.get_efficiency();
+      let efficiency = 1.ms() * self.get_efficiency();
       let action = &mut self.actions[action_idx];
       action.progress += efficiency;
       if action.progress > action.total_dur {

@@ -12,9 +12,15 @@ use crate::{
 };
 #[derive(Clone, Copy)]
 pub struct UseData {
+  pub usage: &'static str,
   pub dur: Duration,
   pub activity: f64,
   pub on_use: fn(&mut Player),
+}
+impl NameAndDesc for UseData {
+  const PREFIX: &str = "use";
+
+  fn get_id(&self) -> &str { self.usage }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -39,7 +45,7 @@ pub struct ItemDef {
   pub longest_side: Length,
   pub pockets: &'static [PocketDef],
   pub gather: GatherStacks,
-  pub use_data: Option<UseData>,
+  pub uses: &'static [UseData],
 }
 
 const impl Mul<u64> for &'static ItemDef {
@@ -65,7 +71,7 @@ impl ItemDef {
 
   builder_method!(gather, GatherStacks);
 
-  builder_method!(use_data, Option<UseData>);
+  builder_method!(uses, &'static [UseData]);
 
   builder_method!(pockets, &'static [PocketDef]);
 
@@ -78,7 +84,7 @@ impl ItemDef {
       longest_side: Length::ZERO,
       pockets: &[],
       gather: GatherStacks::None,
-      use_data: None,
+      uses: &[],
     }
   }
 

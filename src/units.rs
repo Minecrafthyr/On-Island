@@ -184,31 +184,31 @@ impl_constructors!(Length, um: 1, mm: K, cm: 10*K, m: M, km: B);
 // impl_constructors!(Duration, us: 1, ms: US_PER_MS, s: US_PER_S, minutes: US_PER_M, hours: US_PER_H);
 
 pub const trait ToDuration {
-  fn milliseconds(self) -> Duration;
-  fn seconds(self) -> Duration;
-  fn minutes(self) -> Duration;
-  fn hours(self) -> Duration;
-  fn days(self) -> Duration;
-  fn weeks(self) -> Duration;
+  fn ms(self) -> Duration;
+  fn sec(self) -> Duration;
+  fn minute(self) -> Duration;
+  fn hour(self) -> Duration;
+  fn day(self) -> Duration;
+  fn week(self) -> Duration;
 }
 const impl ToDuration for i64 {
   #[inline]
-  fn milliseconds(self) -> Duration { Duration::milliseconds(self) }
+  fn ms(self) -> Duration { Duration::milliseconds(self) }
 
   #[inline]
-  fn seconds(self) -> Duration { Duration::seconds(self) }
+  fn sec(self) -> Duration { Duration::seconds(self) }
 
   #[inline]
-  fn minutes(self) -> Duration { Duration::minutes(self) }
+  fn minute(self) -> Duration { Duration::minutes(self) }
 
   #[inline]
-  fn hours(self) -> Duration { Duration::hours(self) }
+  fn hour(self) -> Duration { Duration::hours(self) }
 
   #[inline]
-  fn days(self) -> Duration { Duration::days(self) }
+  fn day(self) -> Duration { Duration::days(self) }
 
   #[inline]
-  fn weeks(self) -> Duration { Duration::weeks(self) }
+  fn week(self) -> Duration { Duration::weeks(self) }
 }
 
 // #[inline]

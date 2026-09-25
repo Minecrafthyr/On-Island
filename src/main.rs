@@ -17,6 +17,7 @@
 
 use crate::game::Game;
 pub mod crafting;
+pub mod damage;
 pub mod game;
 pub mod i18n;
 pub mod io;

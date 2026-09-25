@@ -1,10 +1,11 @@
-use std::{borrow::Cow, error::Error, fmt::Display, sync::Arc};
+use std::{error::Error, fmt::Display, sync::Arc};
 
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use time::Duration;
 
 use crate::{
+  damage::Damage,
   game::end_game,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
@@ -13,22 +14,6 @@ use crate::{
   utils::NameAndDesc,
 };
 pub mod action;
-
-pub struct Damage {
-  pub id: &'static str,
-  pub amount: f64,
-}
-
-impl NameAndDesc for Damage {
-  const PREFIX: &str = "damage";
-
-  fn get_id(&self) -> &str { self.id }
-}
-impl Damage {
-  pub fn new(id: &'static str, amount: f64) -> Self { Self { id, amount } }
-
-  pub fn death_message(&self) -> Cow<'_, str> { t!(format!("{}.death", self.get_id())) }
-}
 
 pub struct BodyPart {
   pub id: &'static str,
@@ -76,8 +61,8 @@ impl Player {
   pub fn new() -> Self {
     Player {
       health: 1.0,
-      energy: 72.hours(),
-      water: 72.hours(),
+      energy: 72.hour(),
+      water: 72.hour(),
       location: Location::StrandedShip,
       actions: vec![],
       used_body_parts: vec![],
@@ -88,11 +73,11 @@ impl Player {
 
   pub fn get_efficiency(&self) -> f64 {
     let mut base = 1.0;
-    if self.energy < 24.hours() {
-      base *= self.energy.as_seconds_f64() / 24.hours().as_seconds_f64();
+    if self.energy < 24.hour() {
+      base *= self.energy.as_seconds_f64() / 24.hour().as_seconds_f64();
     }
-    if self.water < 24.hours() {
-      base *= self.water.as_seconds_f64() / 24.hours().as_seconds_f64();
+    if self.water < 24.hour() {
+      base *= self.water.as_seconds_f64() / 24.hour().as_seconds_f64();
     }
     if self.health < 0.5 {
       base *= self.health / 0.5;
@@ -113,14 +98,14 @@ impl Player {
     self.water -= dur;
     self.tick_actions();
 
-    if self.energy <= 24.hours() {
+    if self.energy <= 24.hour() {
       self.damage(Damage::new("starve", 0.001));
     }
-    if self.water <= 24.hours() {
+    if self.water <= 24.hour() {
       self.damage(Damage::new("dehydrate", 0.001));
     }
 
-    if self.energy > 48.hours() && self.water > 48.hours() && self.health < 1.0 {
+    if self.energy > 48.hour() && self.water > 48.hour() && self.health < 1.0 {
       self.energy -= dur;
       self.health += 0.001;
     }
@@ -226,15 +211,15 @@ mod tests {
   fn new_player_starts_with_full_stats() {
     let player = Player::new();
     assert!((player.health - 1.0).abs() < f64::EPSILON);
-    assert_eq!(player.energy, 72.hours());
-    assert_eq!(player.water, 72.hours());
+    assert_eq!(player.energy, 72.hour());
+    assert_eq!(player.water, 72.hour());
   }
 
   #[test]
   fn tick_decreases_resources() {
     let mut player = Player::new();
     player.tick(1.0);
-    assert!(player.energy < 72.hours());
-    assert!(player.water < 72.hours());
+    assert!(player.energy < 72.hour());
+    assert!(player.water < 72.hour());
   }
 }

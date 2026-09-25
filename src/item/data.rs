@@ -29,39 +29,49 @@ macro_rules! defines {
 }
 defines! {
   ItemDef,
-  "biscuit": new(mL(100), g(20)).use_data(UseData {
-    dur: 5.seconds(),
+  "biscuit": new(mL(100), g(20)).uses(&[UseData {
+    usage: "eat",
+    dur: 5.sec(),
     activity: 1.03,
     on_use: |player| {
-    player.energy += 1.hours();
-    player.water -= 1.hours();
+    player.energy += 1.hour();
+    player.water -= 1.hour();
   },
-  }),
-  "berry": new(mL(6), g(3)).use_data(UseData {
-    dur: 100.milliseconds(),
+  }]),
+  "berry": new(mL(6), g(3)).uses(&[UseData {
+    usage: "eat",
+    dur: 100.ms(),
     activity: 1.02,
     on_use: |player| {
-    player.energy += 2.minutes();
-    player.water += 1.minutes();
+    player.energy += 2.minute();
+    player.water += 1.minute();
   },
-  }),
+  }]),
   "berry_branch": new(300.mL(), 200.g()),
   "berry_bush": new(6.L(), 2.kg()),
   "berry_bush_harvested": new(5.L(), 1200.g()),
-  "water": new(1.mL(),1.g()).phase(Phase::Liquid),
+  "water": new(1.mL(),1.g()).phase(Phase::Liquid).uses(&[UseData {
+    usage: "drink",
+    dur: 1.ms(),
+    activity: 1.01,
+    on_use: |player| {
+    player.water += 30.sec();
+  },
+  }]),
   "plastic_bottle": new(521.mL(), 10.g()).pockets(
     &[PocketDef::new("plastic_bottle.main", 500.mL(), 900.g(), true).can_store_liquid()]
   ),
   "raw_fish": new(1.L(), 1200.g()).gather(
     GatherStacks::Single(|_rd| [ItemStack::from_def(RAW_FISH, 1)].into())
-  ).use_data(UseData {
-    dur: 60.seconds(),
+  ).uses(&[UseData {
+    usage: "eat",
+    dur: 60.sec(),
     activity: 1.06,
     on_use: |player| {
-    player.energy += 2.hours();
-    player.water += 50.minutes();
+    player.energy += 2.hour();
+    player.water += 50.minute();
   },
-  }),
+  }]),
   "tree": new(150.L(), 100.kg()).gather(
     GatherStacks::Single(|_rd| [
       WOOD * 2,

@@ -1,8 +1,7 @@
 use rand::RngExt;
-use time::Duration;
 
 use crate::{
-  game::Game,
+  game::{Duration, Game},
   io::ScreenWriter,
   location::RestorationData,
   player::{
@@ -55,11 +54,11 @@ impl Game {
       Single(f) =>
         for _ in 0..count {
           let (b, e) = gather_time.clone().into_inner();
-          let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
+          let t = self.rng.random_range(b.as_s_f64()..=e.as_s_f64());
           match self.player_action(Action::no_progress(
             "gather",
             move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-            Duration::seconds_f64(t),
+            Duration::from_s_f64(t),
           )) {
           Ok(()) => {
             self.player.insert_stacks(f(
@@ -75,11 +74,11 @@ impl Game {
         },
       Multiple(f) => {
         let (b, e) = gather_time.clone().into_inner();
-        let t = self.rng.random_range(b.as_seconds_f64()..=e.as_seconds_f64());
+        let t = self.rng.random_range(b.as_s_f64()..=e.as_s_f64());
         match self.player_action(Action::no_progress(
           "gather",
           move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-          Duration::seconds_f64(t),
+          Duration::from_s_f64(t),
         )) {
         Ok(()) => {
           self.player.insert_stacks(f(

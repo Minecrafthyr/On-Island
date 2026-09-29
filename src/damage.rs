@@ -1,6 +1,4 @@
-use std::borrow::Cow;
-
-use crate::utils::NameAndDesc;
+use crate::preclude::*;
 
 pub struct Damage {
   pub id: &'static str,
@@ -10,7 +8,7 @@ pub struct Damage {
 impl NameAndDesc for Damage {
   const PREFIX: &str = "damage";
 
-  fn get_id(&self) -> &str { self.id }
+  fn get_id(&self) -> Cow<'_, str> { self.id.into() }
 }
 impl Damage {
   pub fn new(id: &'static str, amount: f64) -> Self { Self { id, amount } }

@@ -2,16 +2,15 @@ use std::{error::Error, fmt::Display, sync::Arc};
 
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
-use time::Duration;
 
-use crate::{
+pub use crate::{
   damage::Damage,
   game::end_game,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   player::action::Action,
+  preclude::*,
   units::*,
-  utils::NameAndDesc,
 };
 pub mod action;
 
@@ -24,7 +23,7 @@ impl PartialEq for BodyPart {
 impl NameAndDesc for BodyPart {
   const PREFIX: &str = "body_part";
 
-  fn get_id(&self) -> &str { self.id }
+  fn get_id(&self) -> Cow<'_, str> { self.id.into() }
 }
 type IsExclusive = bool;
 pub enum Effect {
@@ -32,7 +31,7 @@ pub enum Effect {
   ActivityMul(f64),
   EnergyConsumeMul(f64),
   WaterConsumeMul(f64),
-  HealthRegenerateMul(f64),
+  HealthRegenMul(f64),
 }
 
 pub struct Player {
@@ -61,8 +60,8 @@ impl Player {
   pub fn new() -> Self {
     Player {
       health: 1.0,
-      energy: 72.hour(),
-      water: 72.hour(),
+      energy: 72.h(),
+      water: 72.h(),
       location: Location::StrandedShip,
       actions: vec![],
       used_body_parts: vec![],
@@ -73,11 +72,11 @@ impl Player {
 
   pub fn get_efficiency(&self) -> f64 {
     let mut base = 1.0;
-    if self.energy < 24.hour() {
-      base *= self.energy.as_seconds_f64() / 24.hour().as_seconds_f64();
+    if self.energy < 24.h() {
+      base *= self.energy.as_s_f64() / 24.h().as_s_f64();
     }
-    if self.water < 24.hour() {
-      base *= self.water.as_seconds_f64() / 24.hour().as_seconds_f64();
+    if self.water < 24.h() {
+      base *= self.water.as_s_f64() / 24.h().as_s_f64();
     }
     if self.health < 0.5 {
       base *= self.health / 0.5;
@@ -93,19 +92,19 @@ impl Player {
   }
 
   pub fn tick(&mut self, activity: f64) {
-    let dur = Duration::MILLISECOND * activity;
+    let dur = 1.ms() * activity;
     self.energy -= dur;
     self.water -= dur;
     self.tick_actions();
 
-    if self.energy <= 24.hour() {
+    if self.energy <= 24.h() {
       self.damage(Damage::new("starve", 0.001));
     }
-    if self.water <= 24.hour() {
+    if self.water <= 24.h() {
       self.damage(Damage::new("dehydrate", 0.001));
     }
 
-    if self.energy > 48.hour() && self.water > 48.hour() && self.health < 1.0 {
+    if self.energy > 48.h() && self.water > 48.h() && self.health < 1.0 {
       self.energy -= dur;
       self.health += 0.001;
     }
@@ -128,11 +127,11 @@ impl Player {
   }
 
   pub fn worn_volume_contained(&self) -> Volume {
-    self.worn.iter().flat_map(|i| i.pockets.iter()).fold(Volume::ZERO, |v, p| v + p.volume_used)
+    self.worn.iter().flat_map(|i| &i.pockets).fold(Volume::ZERO, |v, p| v + p.volume_used)
   }
 
   pub fn worn_weight_contained(&self) -> Mass {
-    self.worn.iter().flat_map(|i| i.pockets.iter()).fold(Mass::ZERO, |v, p| v + p.weight)
+    self.worn.iter().flat_map(|i| &i.pockets).fold(Mass::ZERO, |v, p| v + p.weight)
   }
 
   pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
@@ -189,7 +188,8 @@ impl Player {
     let activity = (base_activity * activity_factor) / self.get_efficiency();
 
     let time_seconds = base_time * weight_factor * self.get_efficiency();
-    Some((Duration::seconds_f64(time_seconds), activity))
+
+    Some((Duration::from_s_f64(time_seconds), activity))
   }
 
   pub fn get_inventory(&self) -> Vec<&ItemStack> {
@@ -211,15 +211,15 @@ mod tests {
   fn new_player_starts_with_full_stats() {
     let player = Player::new();
     assert!((player.health - 1.0).abs() < f64::EPSILON);
-    assert_eq!(player.energy, 72.hour());
-    assert_eq!(player.water, 72.hour());
+    assert_eq!(player.energy, 72.h());
+    assert_eq!(player.water, 72.h());
   }
 
   #[test]
   fn tick_decreases_resources() {
     let mut player = Player::new();
     player.tick(1.0);
-    assert!(player.energy < 72.hour());
-    assert!(player.water < 72.hour());
+    assert!(player.energy < 72.h());
+    assert!(player.water < 72.h());
   }
 }

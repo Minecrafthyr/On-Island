@@ -5,8 +5,8 @@ pub struct DetailedDisplay<T>(pub T);
 
 pub trait NameAndDesc {
   const PREFIX: &str;
-  fn get_id(&self) -> &str;
-  fn name<'a>(&self) -> Cow<'a, str> { t!(format!("{}.{}.name", Self::PREFIX, self.get_id())) }
+  fn get_id(&self) -> Cow<'_, str>;
+  fn name(&self) -> Cow<'_, str> { t!(format!("{}.{}.name", Self::PREFIX, self.get_id())) }
   fn description(&self) -> Cow<'_, str> {
     t!(format!("{}.{}.description", Self::PREFIX, self.get_id()))
   }

@@ -7,8 +7,8 @@ use crossterm::{
 };
 use rand::rngs::ThreadRng;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
-use time::Duration;
 
+pub use crate::preclude::*;
 use crate::{
   io::ScreenWriter,
   location::Locations,
@@ -17,8 +17,6 @@ use crate::{
     action::{Action, ActionContent},
   },
   ui::NumberRequester,
-  units::DurationDisplay,
-  utils::NameAndDesc,
 };
 
 pub mod craft;
@@ -50,7 +48,7 @@ impl Game {
 
   /// ms
   pub fn tick(&mut self) {
-    self.time += Duration::milliseconds(1);
+    self.time += 1.ms();
 
     self.player.tick(1.0);
 
@@ -69,7 +67,7 @@ pub enum WaitActionError {
 impl NameAndDesc for WaitActionError {
   const PREFIX: &str = "wait_action_result";
 
-  fn get_id(&self) -> &str { self.into() }
+  fn get_id(&self) -> Cow<'_, str> { Cow::Borrowed(self.into()) }
 }
 impl Error for WaitActionError {}
 impl Display for WaitActionError {
@@ -94,10 +92,10 @@ impl Game {
   }
 
   pub fn time_pass(&mut self, time: Duration) {
-    if time.is_zero() {
+    if time == Duration::ZERO {
       return;
     }
-    for _ in 0..=time.whole_milliseconds() {
+    for _ in 0..=time.as_ms() {
       self.tick();
     }
   }
@@ -110,16 +108,8 @@ impl Game {
       name = t!("attribute.health.name"),
       value = format!("{:.2}%", self.player.health)
     ));
-    s.lines(t!(
-      "game.stats",
-      name = t!("attribute.energy.name"),
-      value = DurationDisplay(self.player.energy)
-    ));
-    s.lines(t!(
-      "game.stats",
-      name = t!("attribute.water.name"),
-      value = DurationDisplay(self.player.water)
-    ));
+    s.lines(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy));
+    s.lines(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water));
     s.lines(t!("game.status_line", location = self.player.location.name())).end();
   }
 
@@ -160,8 +150,8 @@ impl Game {
     };
     match self.player_action(Action::no_progress(
       "rest",
-      |_| ActionContent::new(vec![], vec![Effect::HealthRegenerateMul(1.2)]),
-      Duration::seconds(sec),
+      |_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)]),
+      Duration::s(sec),
     )) {
     Ok(()) => {}
     Err(not_ok) => {
@@ -169,7 +159,7 @@ impl Game {
       return;
     }
     }
-    self.time_pass(Duration::seconds(sec));
+    self.time_pass(Duration::s(sec));
   }
 }
 

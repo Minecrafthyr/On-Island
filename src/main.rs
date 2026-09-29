@@ -19,18 +19,19 @@ use crate::game::Game;
 pub mod crafting;
 pub mod damage;
 pub mod game;
-pub mod i18n;
+// pub mod i18n;
 pub mod io;
 pub mod item;
 pub mod location;
 pub mod player;
+pub mod preclude;
 pub mod ui;
 pub mod units;
 pub mod utils;
 
 #[macro_use]
 extern crate rust_i18n;
-i18n!("locales", fallback = "en_US");
+i18n!("locales", fallback = "en");
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   rust_i18n::set_locale("zh_CN");
   Game::new()?.run()

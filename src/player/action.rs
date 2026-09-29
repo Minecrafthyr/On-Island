@@ -10,7 +10,7 @@ pub enum PushActionError {
 impl NameAndDesc for PushActionError {
   const PREFIX: &str = "wait_action_result";
 
-  fn get_id(&self) -> &str { self.into() }
+  fn get_id(&self) -> Cow<'_, str> { Cow::Borrowed(self.into()) }
 }
 impl Error for PushActionError {}
 impl Display for PushActionError {

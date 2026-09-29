@@ -3,10 +3,10 @@ use std::ops::{Index, IndexMut, RangeInclusive};
 use rand::{Rng, RngExt};
 use strum::EnumCount;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
-use time::Duration;
 
 use crate::{
   item::{Item, ItemStacks},
+  preclude::*,
   utils::NameAndDesc,
 };
 
@@ -61,7 +61,7 @@ pub enum Location {
 impl NameAndDesc for Location {
   const PREFIX: &str = "location";
 
-  fn get_id(&self) -> &str { self.into() }
+  fn get_id(&self) -> Cow<'_, str> { Cow::Borrowed(self.into()) }
 }
 
 pub struct Locations(pub [LocationData; Location::COUNT]);
@@ -78,12 +78,12 @@ impl Default for Locations {
 }
 impl Locations {
   pub fn new() -> Self {
-    use crate::{item::*, units::*};
+    use crate::item::*;
     Self([
       LocationData::new(
         [WATER_BOTTLE.clone() * 10, BISCUIT.item() * 10, CANVAS_BACKPACK.item() * 1],
         vec![],
-        vec![(Location::Beach, 30.sec())],
+        vec![(Location::Beach, 30.s())],
       ),
       LocationData::new(
         [(BIG_ROCK, 50)],
@@ -95,10 +95,10 @@ impl Locations {
           interval: 20.minute(),
           last_time: Duration::ZERO,
           count: 10,
-          gather_time: 120.sec()..=1200.sec(),
+          gather_time: 120.s()..=1200.s(),
           activity: 1.2,
         }],
-        vec![(Location::StrandedShip, 40.sec()), (Location::Forest, 3.minute())],
+        vec![(Location::StrandedShip, 40.s()), (Location::Forest, 3.minute())],
       ),
       LocationData::new(
         ItemStacks(vec![]),
@@ -111,7 +111,7 @@ impl Locations {
             interval: 60.day(),
             last_time: Duration::ZERO,
             count: 500,
-            gather_time: 120.sec()..=1200.sec(),
+            gather_time: 120.s()..=1200.s(),
             activity: 1.2,
           },
           RestorationData {
@@ -122,7 +122,7 @@ impl Locations {
             interval: 10.day(),
             last_time: Duration::ZERO,
             count: 400,
-            gather_time: 10.sec()..=30.sec(),
+            gather_time: 10.s()..=30.s(),
             activity: 1.1,
           },
         ],

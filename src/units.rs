@@ -1,21 +1,28 @@
 use std::{
   cmp::{Eq, Ord, PartialEq, PartialOrd},
-  ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+  ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use paste::paste;
-use time::Duration;
 
 pub trait Zero {
   const ZERO: Self;
 }
 
-macro_rules! impl_constructors {
-  ($Type:ident, $($name:ident : $factor:expr),+ $(,)?) => {
+macro_rules! unit {
+  (
+    // $(#[$meta:meta])*
+    $vis:vis struct $Type:ident($int:ty);
+    $($name:ident : $factor:expr),+ $(,)?
+  ) => {
+    // $(#[$meta])*
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    #[derive_const(Default)]
+    $vis struct $Type($int);
     impl $Type {
       $(
         #[allow(non_snake_case)]
-        pub const fn $name(value: u64) -> Self {
+        pub const fn $name(value: $int) -> Self {
           Self(value * $factor)
         }
         paste!{
@@ -23,18 +30,23 @@ macro_rules! impl_constructors {
         pub const fn [<as_ $name _f64>](self) -> f64 {
           self.0 as f64 / $factor as f64
         }}
+        paste!{
+        #[allow(non_snake_case)]
+        pub const fn [<as_ $name>](self) -> $int {
+          self.0 / $factor
+        }}
       )+
     }
 
     $(
       #[allow(non_snake_case)]
-      pub const fn $name(value: u64) -> $Type {
-        $Type::$name(value)
+      pub const fn $name(value: $int) -> $Type {
+        <$Type>::$name(value)
       }
     )+
 
     impl $Type {
-      fn from_value_and_str(value: u64, s: &str) -> Result<$Type, String> {
+      fn from_value_and_str(value: $int, s: &str) -> Result<$Type, String> {
         Ok(match s.to_lowercase().as_str() {
           $(stringify!($name) => $name(value),)+
           _ => return Err("Invalid unit".to_string()),
@@ -49,21 +61,20 @@ macro_rules! impl_constructors {
     )+
     }
 
-    const impl [<To $Type>] for u64 {
+    const impl [<To $Type>] for $int {
       $(fn $name(self) -> $Type {
         $Type::$name(self)
       })+
     }
     }
 
-    // 集成 FromStr
     impl std::str::FromStr for $Type {
       type Err = String;
 
       fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut result = $Type::default();
+        let mut result = <$Type>::default();
         let mut last_idx = 0;
-        let mut value_buf: Option<u64> = None;
+        let mut value_buf: Option<$int> = None;
         for (i, c) in s.chars().enumerate() {
           match c {
             '0'..='9' => {}
@@ -86,11 +97,6 @@ macro_rules! impl_constructors {
         Ok(result)
       }
     }
-  };
-}
-
-macro_rules! impl_traits {
-  ($Type:ty) => {
     impl Add for $Type {
       type Output = Self;
 
@@ -107,187 +113,191 @@ macro_rules! impl_traits {
     impl SubAssign for $Type {
       fn sub_assign(&mut self, other: Self) { self.0 -= other.0; }
     }
-    impl Mul<u64> for $Type {
+    impl Mul<$int> for $Type {
       type Output = Self;
 
-      fn mul(self, rhs: u64) -> Self { Self(self.0 * rhs) }
+      fn mul(self, rhs: $int) -> Self { Self(self.0 * rhs) }
     }
-    impl MulAssign<u64> for $Type {
-      fn mul_assign(&mut self, rhs: u64) { self.0 *= rhs; }
+    impl MulAssign<$int> for $Type {
+      fn mul_assign(&mut self, rhs: $int) { self.0 *= rhs; }
     }
     impl Mul<f64> for $Type {
       type Output = Self;
 
-      fn mul(self, rhs: f64) -> Self { Self((self.0 as f64 * rhs) as u64) }
+      fn mul(self, rhs: f64) -> Self { Self((self.0 as f64 * rhs) as $int) }
     }
     impl MulAssign<f64> for $Type {
-      fn mul_assign(&mut self, rhs: f64) { self.0 = (self.0 as f64 * rhs) as u64; }
+      fn mul_assign(&mut self, rhs: f64) { self.0 = (self.0 as f64 * rhs) as $int; }
     }
-    impl Div<u64> for $Type {
+    impl Div<$int> for $Type {
       type Output = Self;
 
-      fn div(self, rhs: u64) -> Self { Self(self.0 / rhs) }
+      fn div(self, rhs: $int) -> Self { Self(self.0 / rhs) }
     }
-    impl DivAssign<u64> for $Type {
-      fn div_assign(&mut self, rhs: u64) { self.0 /= rhs; }
+    impl DivAssign<$int> for $Type {
+      fn div_assign(&mut self, rhs: $int) { self.0 /= rhs; }
     }
     impl std::ops::Neg for $Type {
       type Output = Self;
 
       fn neg(self) -> Self { Self(self.0.wrapping_neg()) }
     }
-    impl From<$Type> for u64 {
+    impl From<$Type> for $int {
       fn from(value: $Type) -> Self { value.0 }
     }
-    impl From<u64> for $Type {
-      fn from(value: u64) -> Self { Self(value) }
+    impl From<$int> for $Type {
+      fn from(value: $int) -> Self { Self(value) }
     }
-    impl std::fmt::Display for $Type {
-      fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
-    }
+
     impl Zero for $Type {
       const ZERO: Self = Self::default();
     }
+    impl $Type { paste! {
+      $(pub const [<FACTOR_ $name:upper>] : $int = $factor;)+
+    }}
   };
 }
 
 const K: u64 = 1000;
 const M: u64 = K * 1000;
 const B: u64 = M * 1000;
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive_const(Default)]
-pub struct Volume(u64);
-impl_traits!(Volume);
 
-impl_constructors!(Volume, uL: 1, mL: K, cm3: K , L: M, m3: B);
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive_const(Default)]
-pub struct Mass(u64);
-impl_traits!(Mass);
-impl_constructors!(Mass, ug: 1, mg: K, g: M, kg: B);
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive_const(Default)]
-pub struct Length(u64);
-impl_traits!(Length);
-impl_constructors!(Length, um: 1, mm: K, cm: 10*K, m: M, km: B);
-
-// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-// #[derive_const(Default)]
-// pub struct Duration(u64);
-// impl_traits!(Duration);
-// const US_PER_MS: u64 = 1000;
-// const US_PER_S: u64 = US_PER_MS * 1000;
-// const US_PER_M: u64 = US_PER_S * 60;
-// const US_PER_H: u64 = US_PER_M * 60;
-// impl_constructors!(Duration, us: 1, ms: US_PER_MS, s: US_PER_S, minutes: US_PER_M, hours: US_PER_H);
-
-pub const trait ToDuration {
-  fn ms(self) -> Duration;
-  fn sec(self) -> Duration;
-  fn minute(self) -> Duration;
-  fn hour(self) -> Duration;
-  fn day(self) -> Duration;
-  fn week(self) -> Duration;
+unit! {
+  pub struct Volume(u64);
+  uL: 1, mL: K, cm3: K , L: M, m3: B
 }
-const impl ToDuration for i64 {
-  #[inline]
-  fn ms(self) -> Duration { Duration::milliseconds(self) }
-
-  #[inline]
-  fn sec(self) -> Duration { Duration::seconds(self) }
-
-  #[inline]
-  fn minute(self) -> Duration { Duration::minutes(self) }
-
-  #[inline]
-  fn hour(self) -> Duration { Duration::hours(self) }
-
-  #[inline]
-  fn day(self) -> Duration { Duration::days(self) }
-
-  #[inline]
-  fn week(self) -> Duration { Duration::weeks(self) }
+unit! {
+  pub struct Mass(u64);
+  ug: 1, mg: K, g: M, kg: B
 }
-
-// #[inline]
-// pub const fn milliseconds(milliseconds: i64) -> Duration { Duration::milliseconds(milliseconds) }
-// #[inline]
-// pub const fn seconds(seconds: i64) -> Duration { Duration::seconds(seconds) }
-// #[inline]
-// pub const fn minutes(minutes: i64) -> Duration { Duration::minutes(minutes) }
-// #[inline]
-// pub const fn hours(hours: i64) -> Duration { Duration::hours(hours) }
-// #[inline]
-// pub const fn days(days: i64) -> Duration { Duration::days(days) }
-// #[inline]
-// pub const fn weeks(weeks: i64) -> Duration { Duration::weeks(weeks) }
-
-#[derive(Default)]
-pub struct DurationDisplay(pub Duration);
-
-impl Deref for DurationDisplay {
-  type Target = Duration;
-
-  fn deref(&self) -> &Self::Target { &self.0 }
+unit! {
+  pub struct Length(u64); um: 1, mm: K, cm: 10*K, m: M, km: B
 }
-
-impl std::fmt::Display for DurationDisplay {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    use time::unit::*;
-    if self.is_negative() {
-      f.write_str("-")?;
+unit! {
+  pub struct Duration(i64);
+  us: 1, ms: 1000, s: 1000*1000, minute: 1000*1000*60, h: 1000i64*1000*60*60, day: 1000i64*1000*60*60*24, week: 1000i64*1000*60*60*24*7
+}
+impl Duration {
+  pub fn from_s_f64(secs: f64) -> Self {
+    if secs.is_nan() {
+      return Self(0);
     }
-    if let Some(_precision) = f.precision() {
-      if self.is_zero() {
-        return (0.).fmt(f).and_then(|_| f.write_str("s"));
-      }
-
-      macro_rules! item {
-        ($name:literal, $value:expr) => {
-          let value = $value;
-          if value >= 1.0 {
-            return value.fmt(f).and_then(|_| write!(f, "{}", t!($name)));
-          }
-        };
-      }
-
-      let seconds = self.unsigned_abs().as_secs_f64();
-      item!("ui.dur.d", seconds / Second::per_t::<f64>(Day));
-      item!("ui.dur.h", seconds / Second::per_t::<f64>(Hour));
-      item!("ui.dur.m", seconds / Second::per_t::<f64>(Minute));
-      item!("ui.dur.s", seconds);
-      item!("ui.dur.ms", seconds * Millisecond::per_t::<f64>(Second));
-      item!("ui.dur.µs", seconds * Microsecond::per_t::<f64>(Second));
-      item!("ui.dur.ns", seconds * Nanosecond::per_t::<f64>(Second));
+    let ns = secs * Duration::FACTOR_S as f64;
+    let clamped = if ns >= i64::MAX as f64 {
+      i64::MAX
+    } else if ns <= i64::MIN as f64 {
+      i64::MIN
     } else {
-      if self.is_zero() {
-        return f.write_str("0秒");
-      }
-      macro_rules! item {
-        ($name:literal, $value:expr) => {
-          match $value {
-          0 => Ok(()),
-          value => value.fmt(f).and_then(|_| f.write_str(&t!($name))),
-          }
-        };
-      }
-      let seconds = self.whole_seconds().unsigned_abs();
-      let nanoseconds = self.subsec_nanoseconds().unsigned_abs();
-      item!("ui.dur.d", seconds / Second::per_t::<u64>(Day))?;
-      item!("ui.dur.h", seconds / Second::per_t::<u64>(Hour) % Hour::per_t::<u64>(Day))?;
-      item!("ui.dur.m", seconds / Second::per_t::<u64>(Minute) % Minute::per_t::<u64>(Hour))?;
-      item!("ui.dur.s", seconds % Second::per_t::<u64>(Minute))?;
-      item!("ui.dur.ms", nanoseconds / Nanosecond::per_t::<u32>(Millisecond))?;
-      item!(
-        "ui.dur.µs",
-        nanoseconds / Nanosecond::per_t::<u32>(Microsecond)
-          % Microsecond::per_t::<u32>(Millisecond)
-      )?;
-      item!("ns", nanoseconds % Nanosecond::per_t::<u32>(Microsecond))?;
-    }
+      ns.round() as i64
+    };
 
-    Ok(())
+    Self(clamped)
+  }
+}
+fn fmt_unit(
+  f: &mut std::fmt::Formatter<'_>, value: u64, units: &[(u64, &str)], prefix: &str,
+) -> std::fmt::Result {
+  if value == 0 {
+    let suffix = units.last().unwrap().1;
+    return write!(f, "0{}", t!(format!("{}.{}", prefix, suffix)));
+  }
+  for &(scale, suffix) in units {
+    if value >= scale {
+      let whole = value / scale;
+      let rem = value % scale;
+      if rem == 0 {
+        return write!(f, "{}{}", whole, t!(format!("{}.{}", prefix, suffix)));
+      }
+      let frac_digits = scale.to_string().len() as u32 - 1;
+      let frac = format!("{:0width$}", rem, width = frac_digits as usize);
+      let frac = frac.trim_end_matches('0');
+      return write!(f, "{}.{}{}", whole, frac, t!(format!("{}.{}", prefix, suffix)));
+    }
+  }
+  unreachable!()
+}
+impl std::fmt::Display for Volume {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fmt_unit(
+      f,
+      self.0,
+      &[
+        (Volume::FACTOR_M3, "m3"),
+        (Volume::FACTOR_L, "L"),
+        (Volume::FACTOR_ML, "mL"),
+        (Volume::FACTOR_UL, "uL"),
+      ],
+      "ui.vol",
+    )
+  }
+}
+
+impl std::fmt::Display for Mass {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fmt_unit(
+      f,
+      self.0,
+      &[
+        (Mass::FACTOR_KG, "kg"),
+        (Mass::FACTOR_G, "g"),
+        (Mass::FACTOR_MG, "mg"),
+        (Mass::FACTOR_UG, "ug"),
+      ],
+      "ui.mass",
+    )
+  }
+}
+
+impl std::fmt::Display for Length {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fmt_unit(
+      f,
+      self.0,
+      &[
+        (Length::FACTOR_KM, "km"),
+        (Length::FACTOR_M, "m"),
+        (Length::FACTOR_CM, "cm"),
+        (Length::FACTOR_MM, "mm"),
+        (Length::FACTOR_UM, "um"),
+      ],
+      "ui.len",
+    )
+  }
+}
+
+impl std::fmt::Display for Duration {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let ns = self.0;
+    if ns == 0 {
+      return write!(f, "0{}", t!("ui.dur.ns"));
+    }
+    let abs = ns.unsigned_abs();
+    if ns < 0 {
+      write!(f, "-")?;
+    }
+    // Pick the largest unit that fits, then print a decimal fraction
+    for (scale, suffix) in [
+      (86_400_000_000_000, "d"),
+      (3_600_000_000_000, "h"),
+      (60_000_000_000, "m"),
+      (1_000_000_000, "s"),
+      (1_000_000, "ms"),
+      (1_000, "µs"),
+      (1, "ns"),
+    ] {
+      if abs >= scale {
+        let whole = abs / scale;
+        let rem = abs % scale;
+        if rem == 0 {
+          return write!(f, "{}{}", whole, t!(format!("ui.dur.{suffix}")));
+        }
+        // Print fractional part, trimming trailing zeros
+        let frac_digits = scale.to_string().len() as u32 - 1;
+        let frac = format!("{:0width$}", rem, width = frac_digits as usize);
+        let frac = frac.trim_end_matches('0');
+        return write!(f, "{}.{}{}", whole, frac, t!(format!("ui.dur.{suffix}")));
+      }
+    }
+    unreachable!()
   }
 }

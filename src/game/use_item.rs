@@ -58,7 +58,7 @@ impl Game {
           text: t!(
             "action.use_item.data",
             index = i,
-            duration = ud.dur.as_seconds_f64() : {:.2},
+            duration = ud.dur.as_s_f64() : {:.2},
             activity = ud.activity: {:.2},
             description = ud.description()
           ),

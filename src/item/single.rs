@@ -1,6 +1,4 @@
-use std::ops::Mul;
-
-use time::Duration;
+use std::{borrow::Cow, ops::Mul};
 
 use super::*;
 use crate::{
@@ -20,7 +18,7 @@ pub struct UseData {
 impl NameAndDesc for UseData {
   const PREFIX: &str = "use";
 
-  fn get_id(&self) -> &str { self.usage }
+  fn get_id(&self) -> Cow<'_, str> { self.usage.into() }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -29,12 +27,20 @@ pub enum Phase {
   Liquid,
   Gas,
 }
+type SingleRestorationFn = fn(&mut RestorationData) -> ItemStacks;
+type MultipleRestorationFn = fn(&mut RestorationData, u64) -> ItemStacks;
 /// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
 pub enum GatherStacks {
   None,
-  Single(fn(&mut RestorationData) -> ItemStacks),
-  Multiple(fn(&mut RestorationData, u64) -> ItemStacks),
+  Single(SingleRestorationFn),
+  Multiple(MultipleRestorationFn),
+}
+impl From<SingleRestorationFn> for GatherStacks {
+  fn from(value: SingleRestorationFn) -> Self { Self::Single(value) }
+}
+impl From<MultipleRestorationFn> for GatherStacks {
+  fn from(value: MultipleRestorationFn) -> Self { Self::Multiple(value) }
 }
 #[derive(Clone)]
 pub struct ItemDef {
@@ -57,7 +63,7 @@ const impl Mul<u64> for &'static ItemDef {
 impl NameAndDesc for ItemDef {
   const PREFIX: &str = "item";
 
-  fn get_id(&self) -> &str { self.id }
+  fn get_id(&self) -> Cow<'_, str> { self.id.into() }
 }
 
 impl ItemDef {

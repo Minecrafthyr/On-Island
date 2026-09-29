@@ -42,7 +42,7 @@ impl Game {
             index = i,
             name = item.name(),
             count = count,
-            duration = dur.as_seconds_f64() : {:.2},
+            duration = dur.as_s_f64() : {:.2},
             activity = activity : {:.2},
             description = item.description()
           ),

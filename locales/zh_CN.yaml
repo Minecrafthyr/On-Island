@@ -37,7 +37,7 @@ item:
     description: 长而柔韧的树藤。
   dry_tree_vine:
     name: 干树藤
-    description: 经过烘干的树藤，更适合编织。
+    description: 经过烘干的树藤，适合编织。
   vine_backpack:
     name: 树藤背包
     description: 用干树藤编织而成的背包。
@@ -107,33 +107,49 @@ action:
     entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
     empty: 你当前没有足够的材料来进行任何合成。
     incorrupted: 合成终止。
+    recipe:
+      dry_tree_vine:
+        name: 烤干树藤
+      vine_backpack:
+        name: 编织树藤背包
+      vine_basket:
+        name: 编织树藤筐
   travel:
     title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}"
-# crafting:
-#   dry_tree_vine:
-#     name: 烤干树藤
-#   vine_backpack:
-#     name: 编织树藤背包
-#   vine_basket:
-#     name: 编织树藤筐
 ui:
+  vol:
+    m3: 立方米
+    L: 升
+    mL: 毫升
+    uL: 微升
+  mass:
+    kg: 千克
+    g: 克
+    mg: 毫克
+    ug: 微克
+  mass:
+    km: 千米
+    m: 米
+    cm: 厘米
+    mm: 毫米
+    um: 微米
   dur:
-    w: "周"
-    d: "天"
-    h: "小时"
-    m: "分钟"
-    s: "秒"
-    ms: "毫秒"
-    µs: "微秒"
-    ns: "纳秒"
+    w: 周
+    d: 天
+    h: 小时
+    m: 分钟
+    s: 秒
+    ms: 毫秒
+    µs: 微秒
+    ns: 纳秒
   get_number:
-    default: "（默认%{value}）"
-    value: "（只能为%{value}）"
-    # range: "（%{start}–%{last}）"
-    empty: "输入为空。%{prompt}"
-    invalid: "输入无效。%{prompt}"
+    default: （默认%{value}）
+    value: （只能为%{value}）
+    # range: （%{start}–%{last}）
+    empty: 输入为空。%{prompt}
+    invalid: 输入无效。%{prompt}
   display_list:
     empty: （空）
   continue_prompt: 输入任意键继续……

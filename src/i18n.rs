@@ -105,12 +105,11 @@ macro_rules! dict {
 #[cfg(test)]
 mod tests {
 
-  use super::*;
+  use crate::preclude::*;
 
   #[test]
   fn test_i18n() -> Result<(), Box<dyn std::error::Error>> {
     let mut locked = I18N.lock()?;
-    locked.set_langs(["en", "zh"]);
 
     locked.register("en", dict! {
       "greeting": "Hello, {name}!",
@@ -121,6 +120,7 @@ mod tests {
       "areyouok": "{pron}还好吗，{name}？",
       "xiaoming": "小明"
     });
+    locked.set_langs(["en", "zh"]);
 
     assert_eq!(locked.get("en", "greeting"), Some("Hello, {name}!"));
     assert_eq!(locked.get("zh", "greeting"), Some("你好，{name}！"));

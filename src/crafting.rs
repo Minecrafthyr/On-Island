@@ -1,8 +1,6 @@
-use std::{borrow::Cow, fmt::Write};
+use std::fmt::Write;
 
-use time::Duration;
-
-use crate::item::*;
+use crate::{item::*, preclude::*};
 
 #[derive(Clone)]
 pub struct RecipeStep {
@@ -18,16 +16,17 @@ pub struct Recipe {
   pub custom_name: Option<&'static str>,
   pub steps: &'static [RecipeStep],
 }
+impl NameAndDesc for Recipe {
+  const PREFIX: &str = "crafting.recipe";
 
-impl Recipe {
-  pub fn name(&self) -> Cow<'_, str> {
-    if let Some(custom_name) = self.custom_name {
-      t!(format!("crafting.{}.name", custom_name))
-    } else {
-      t!(format!("crafting.{}.name", self.id))
-    }
+  fn get_id(&self) -> Cow<'_, str> {
+    t!(format!(
+      "crafting.recipe.{}.name",
+      if let Some(custom_name) = self.custom_name { custom_name } else { self.id }
+    ))
   }
-
+}
+impl Recipe {
   // pub fn depends(&self) -> Vec<&'static RecipeStep> { self.steps.iter() }
 
   pub fn io_text(&self) -> String {
@@ -127,7 +126,7 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
         Req::comp(FIRE).c(100).no_consume().into(),
       ]),
       outputs: (&[(DRY_TREE_VINE, 1)]).into(),
-      time: Duration::hours(1),
+      time: 1.h(),
       activity: 1.3,
     }],
   },
@@ -138,7 +137,7 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
       custom_name: None,
       inputs: Req::comp(DRY_TREE_VINE).c(5).into(),
       outputs: (&[(VINE_BACKPACK, 1)]).into(),
-      time: Duration::hours(2),
+      time: 2.h(),
       activity: 1.4,
     }],
   },
@@ -149,7 +148,7 @@ pub const CRAFTING_RECIPES: &[Recipe] = &[
       custom_name: None,
       inputs: Req::comp(DRY_TREE_VINE).c(10).into(),
       outputs: (&[(VINE_BASKET, 1)]).into(),
-      time: Duration::hours(3),
+      time: 3.h(),
       activity: 1.4,
     }],
   },

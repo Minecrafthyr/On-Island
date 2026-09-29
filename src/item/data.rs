@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use rand::random_range;
 
-use crate::item::{container::PocketDef, *};
+use super::*;
 
 macro_rules! defines {
   (
@@ -31,11 +31,11 @@ defines! {
   ItemDef,
   "biscuit": new(mL(100), g(20)).uses(&[UseData {
     usage: "eat",
-    dur: 5.sec(),
+    dur: 5.s(),
     activity: 1.03,
     on_use: |player| {
-    player.energy += 1.hour();
-    player.water -= 1.hour();
+    player.energy += 1.h();
+    player.water -= 1.h();
   },
   }]),
   "berry": new(mL(6), g(3)).uses(&[UseData {
@@ -55,7 +55,7 @@ defines! {
     dur: 1.ms(),
     activity: 1.01,
     on_use: |player| {
-    player.water += 30.sec();
+    player.water += 30.s();
   },
   }]),
   "plastic_bottle": new(521.mL(), 10.g()).pockets(
@@ -65,10 +65,10 @@ defines! {
     GatherStacks::Single(|_rd| [ItemStack::from_def(RAW_FISH, 1)].into())
   ).uses(&[UseData {
     usage: "eat",
-    dur: 60.sec(),
+    dur: 60.s(),
     activity: 1.06,
     on_use: |player| {
-    player.energy += 2.hour();
+    player.energy += 2.h();
     player.water += 50.minute();
   },
   }]),

@@ -1,5 +1,3 @@
-use std::mem::transmute;
-
 use super::*;
 #[derive(Clone, Copy)]
 #[derive_const(Default)]
@@ -16,14 +14,10 @@ const impl DerefMut for ItemDefStacks {
 const impl From<&'static [ItemDefStack]> for ItemDefStacks {
   fn from(value: &'static [ItemDefStack]) -> Self { Self(value) }
 }
-const impl<const S: usize> From<&'static [(&'static ItemDef, u64); S]> for ItemDefStacks {
-  fn from(value: &'static [(&'static ItemDef, u64); S]) -> Self {
-    Self(unsafe { transmute((value, S as u64)) })
-  }
+const impl<const S: usize> From<&'static [ItemDefStack; S]> for ItemDefStacks {
+  fn from(value: &'static [ItemDefStack; S]) -> Self { Self(value) }
 }
-const impl<const S: usize> From<[(&'static ItemDef, u64); S]> for ItemDefStacks {
-  fn from(value: [(&'static ItemDef, u64); S]) -> Self { Self(unsafe { transmute((&value, S)) }) }
-}
+
 #[derive(Clone, PartialEq)]
 pub struct ItemStacks(pub Vec<ItemStack>);
 const impl Deref for ItemStacks {

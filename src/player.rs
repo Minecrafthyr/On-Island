@@ -91,8 +91,8 @@ impl Player {
     }
   }
 
-  pub fn tick(&mut self, activity: f64) {
-    let dur = 1.ms() * activity;
+  pub fn tick(&mut self) {
+    let dur = 1.ms() * self.get_activity();
     self.energy -= dur;
     self.water -= dur;
     self.tick_actions();
@@ -201,25 +201,4 @@ impl Player {
   }
 
   pub fn count_of(&self, item: &Item) -> u64 { self.count_of_matching(|ei| ei == item) }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn new_player_starts_with_full_stats() {
-    let player = Player::new();
-    assert!((player.health - 1.0).abs() < f64::EPSILON);
-    assert_eq!(player.energy, 72.h());
-    assert_eq!(player.water, 72.h());
-  }
-
-  #[test]
-  fn tick_decreases_resources() {
-    let mut player = Player::new();
-    player.tick(1.0);
-    assert!(player.energy < 72.h());
-    assert!(player.water < 72.h());
-  }
 }

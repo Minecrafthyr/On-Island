@@ -4,7 +4,7 @@ use super::*;
 use crate::{
   builder_method,
   item::container::{Pocket, PocketDef},
-  location::RestorationData,
+  location::ResData,
   player::Player,
   utils::NameAndDesc,
 };
@@ -27,8 +27,8 @@ pub enum Phase {
   Liquid,
   Gas,
 }
-type SingleRestorationFn = fn(&mut RestorationData) -> ItemStacks;
-type MultipleRestorationFn = fn(&mut RestorationData, u64) -> ItemStacks;
+type SingleRestorationFn = fn(&mut ResData) -> ItemStacks;
+type MultipleRestorationFn = fn(&mut ResData, u64) -> ItemStacks;
 /// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
 pub enum GatherStacks {
@@ -67,19 +67,19 @@ impl NameAndDesc for ItemDef {
 }
 
 impl ItemDef {
-  builder_method!(id, &'static str);
+  builder_method! {id, &'static str}
 
-  builder_method!(volume, Volume);
+  builder_method! {volume, Volume}
 
-  builder_method!(weight, Mass);
+  builder_method! {weight, Mass}
 
-  builder_method!(phase, Phase);
+  builder_method! {phase, Phase}
 
-  builder_method!(gather, GatherStacks);
+  builder_method! {gather, GatherStacks}
 
-  builder_method!(uses, &'static [UseData]);
+  builder_method! {uses, &'static [UseData]}
 
-  builder_method!(pockets, &'static [PocketDef]);
+  builder_method! {pockets, &'static [PocketDef]}
 
   pub const fn new(id: &'static str, volume: Volume, weight: Mass) -> Self {
     Self {

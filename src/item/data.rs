@@ -12,17 +12,17 @@ macro_rules! defines {
   ) => {
     ::paste::paste! {
       $(
-        pub const [< $name:upper >]: &$Struct = &$Struct::$f($name, $($f_args)*)
+        pub const [<$name:upper>]: &$Struct = &$Struct::$f($name, $($f_args)*)
           $(.$method($($args)*))*;
       )*
 
-      pub const [< $Struct:upper S>]: &[&$Struct] = &[
+      pub const [<$Struct:upper S>]: &[&$Struct] = &[
         $( [< $name:upper >] , )*
       ];
 
-      pub const [< $Struct:upper S_MAP>]: ::phf::Map<&'static str, &'static $Struct> =
+      pub const [<$Struct:upper S_MAP>]: ::phf::Map<&'static str, &'static $Struct> =
         ::phf::phf_map! {
-          $( $name => &[< $name:upper >] , )*
+          $( $name => &[<$name:upper>] , )*
         };
     }
   };
@@ -43,8 +43,8 @@ defines! {
     dur: 100.ms(),
     activity: 1.02,
     on_use: |player| {
-    player.energy += 2.minute();
-    player.water += 1.minute();
+    player.energy += 2.mnt();
+    player.water += 1.mnt();
   },
   }]),
   "berry_branch": new(300.mL(), 200.g()),
@@ -69,7 +69,7 @@ defines! {
     activity: 1.06,
     on_use: |player| {
     player.energy += 2.h();
-    player.water += 50.minute();
+    player.water += 50.mnt();
   },
   }]),
   "tree": new(150.L(), 100.kg()).gather(
@@ -109,6 +109,6 @@ defines! {
 
 pub static WATER_BOTTLE: LazyLock<Item> = LazyLock::new(|| {
   let mut item: Item = PLASTIC_BOTTLE.into();
-  item.pockets[0].stacks.insert_stack((WATER, 500).into());
+  item.pockets[0].stacks.insert_stack(WATER.item() * 500);
   item
 });

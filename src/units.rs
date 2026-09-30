@@ -153,7 +153,10 @@ macro_rules! unit {
       const ZERO: Self = Self::default();
     }
     impl $Type { paste! {
-      $(pub const [<FACTOR_ $name:upper>] : $int = $factor;)+
+      $(
+        pub const [<FACTOR_ $name:upper>] : $int = $factor;
+        pub const [<VAL_ $name:upper>] : $int = $factor;
+      )+
     }}
   };
 }
@@ -175,7 +178,7 @@ unit! {
 }
 unit! {
   pub struct Duration(i64);
-  us: 1, ms: 1000, s: 1000*1000, minute: 1000*1000*60, h: 1000i64*1000*60*60, day: 1000i64*1000*60*60*24, week: 1000i64*1000*60*60*24*7
+  us: 1, ms: 1000, s: 1000*1000, mnt: 1000*1000*60, h: 1000i64*1000*60*60, day: 1000i64*1000*60*60*24, week: 1000i64*1000*60*60*24*7
 }
 impl Duration {
   pub fn from_s_f64(secs: f64) -> Self {
@@ -227,7 +230,7 @@ impl std::fmt::Display for Volume {
         (Volume::FACTOR_ML, "mL"),
         (Volume::FACTOR_UL, "uL"),
       ],
-      "ui.vol",
+      "unit.vol",
     )
   }
 }
@@ -243,7 +246,7 @@ impl std::fmt::Display for Mass {
         (Mass::FACTOR_MG, "mg"),
         (Mass::FACTOR_UG, "ug"),
       ],
-      "ui.mass",
+      "unit.mass",
     )
   }
 }
@@ -260,7 +263,7 @@ impl std::fmt::Display for Length {
         (Length::FACTOR_MM, "mm"),
         (Length::FACTOR_UM, "um"),
       ],
-      "ui.len",
+      "unit.len",
     )
   }
 }
@@ -269,7 +272,7 @@ impl std::fmt::Display for Duration {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let ns = self.0;
     if ns == 0 {
-      return write!(f, "0{}", t!("ui.dur.ns"));
+      return write!(f, "0{}", t!("unit.dur.ns"));
     }
     let abs = ns.unsigned_abs();
     if ns < 0 {
@@ -289,13 +292,13 @@ impl std::fmt::Display for Duration {
         let whole = abs / scale;
         let rem = abs % scale;
         if rem == 0 {
-          return write!(f, "{}{}", whole, t!(format!("ui.dur.{suffix}")));
+          return write!(f, "{}{}", whole, t!(format!("unit.dur.{suffix}")));
         }
         // Print fractional part, trimming trailing zeros
         let frac_digits = scale.to_string().len() as u32 - 1;
         let frac = format!("{:0width$}", rem, width = frac_digits as usize);
         let frac = frac.trim_end_matches('0');
-        return write!(f, "{}.{}{}", whole, frac, t!(format!("ui.dur.{suffix}")));
+        return write!(f, "{}.{}{}", whole, frac, t!(format!("unit.dur.{suffix}")));
       }
     }
     unreachable!()

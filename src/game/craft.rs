@@ -1,7 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-  crafting::{CRAFTING_RECIPES, RecipeDepends, RecipeRequirements, RecipeStep},
+  crafting::{
+    CRAFTING_RECIPES, RecipeStep,
+    depends::{Depends, Req},
+  },
   game::Game,
   io::ScreenWriter,
   player::{
@@ -11,17 +14,12 @@ use crate::{
   preclude::*,
   ui::{DataItem, DisplayList, NumberRequester},
 };
-pub fn test_req(p: &Player, req: &RecipeRequirements) -> u64 {
-  use crate::crafting::ItemRequirements::*;
-  let matched = match req.item {
-  Def(item_def) => p.count_of_matching(|i| i.def == item_def),
-  Defs(item_defs) => p.count_of_matching(|i| item_defs.contains(&i.def)),
-  Fn(f) => p.count_of_matching(f),
-  };
+pub fn test_req(p: &Player, req: &Req) -> u64 {
+  let matched = p.count_of_matching(|i| req.item.matches(i));
   if req.consume { matched / req.count } else { u64::MAX }
 }
-pub fn max_batch_count(p: &Player, depends: &RecipeDepends) -> u64 {
-  use RecipeDepends::*;
+pub fn max_batch_count(p: &Player, depends: &Depends) -> u64 {
+  use Depends::*;
   match depends {
   AnyOf(items) => items.iter().fold(0u64, |b, d| b.max(max_batch_count(p, d))),
   AllOf(items) => items.iter().fold(0u64, |b, d| b.min(max_batch_count(p, d))),
@@ -30,7 +28,7 @@ pub fn max_batch_count(p: &Player, depends: &RecipeDepends) -> u64 {
 }
 
 impl Game {
-  // TODO: we need pauseable craft and one by one taking recipe req :)
+  // TODO: resume and one by one taking recipe req :)
   pub fn craft(&mut self) {
     // pub fn test_depends(p: &Player, depends: &Depends) -> bool {
     //   match depends {
@@ -50,7 +48,7 @@ impl Game {
           text: t!("action.craft.entry", index = i, title = recipe.name()),
           selected: |o: &Cow<'_, str>| {
             let mut s = o.to_string();
-            s.push_str(&recipe.io_text());
+            s.push_str(&recipe.description());
             Cow::Owned(s)
           },
           enter: |i| Ok(i),
@@ -87,20 +85,15 @@ impl Game {
   }
 
   pub fn apply_recipe_step(&mut self, recipe: &RecipeStep) -> bool {
-    pub fn take_req(p: &mut Player, req: &RecipeRequirements) {
+    pub fn take_req(p: &mut Player, req: &Req) {
       if !req.consume {
         return;
       }
-      use crate::crafting::ItemRequirements::*;
-      match req.item {
-      Def(item_def) => p.take_items_matching(|i| i.def == item_def, req.count),
-      Defs(item_defs) => p.take_items_matching(|i| item_defs.contains(&i.def), req.count),
-      Fn(f) => p.take_items_matching(f, req.count),
-      };
+      p.take_items_matching(|i| req.item.matches(i), req.count);
     }
-    pub fn take_depends(p: &mut Player, depends: &RecipeDepends) {
+    pub fn take_depends(p: &mut Player, depends: &Depends) {
       match depends {
-      RecipeDepends::AnyOf(items) => take_depends(
+      Depends::AnyOf(items) => take_depends(
         p,
         items
           .iter()
@@ -110,8 +103,8 @@ impl Game {
           .last()
           .unwrap(),
       ),
-      RecipeDepends::AllOf(items) => items.iter().for_each(|i| take_depends(p, i)),
-      RecipeDepends::Req(req) => take_req(p, req),
+      Depends::AllOf(items) => items.iter().for_each(|i| take_depends(p, i)),
+      Depends::Req(req) => take_req(p, req),
       }
     }
     take_depends(&mut self.player, &recipe.inputs);

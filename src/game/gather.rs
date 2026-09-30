@@ -3,7 +3,7 @@ use rand::RngExt;
 use crate::{
   game::{Duration, Game},
   io::ScreenWriter,
-  location::RestorationData,
+  location::ResData,
   player::{
     Effect,
     action::{Action, ActionContent},
@@ -36,7 +36,7 @@ impl Game {
     )) else {
       return;
     };
-    let RestorationData { item, gather_time, activity, .. } =
+    let ResData { item, gather_time, activity, .. } =
       location_data.restore_and_gather[choice].clone();
 
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))

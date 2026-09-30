@@ -5,13 +5,14 @@ use strum::EnumCount;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 
 use crate::{
+  builder_method,
   item::{Item, ItemStacks},
   preclude::*,
   utils::NameAndDesc,
 };
 
 #[derive(Clone)]
-pub struct RestorationData {
+pub struct ResData {
   pub item: Item,
   pub attempts: RangeInclusive<u64>,
   pub chance: f64,
@@ -21,15 +22,38 @@ pub struct RestorationData {
   pub count: u64,
   pub gather_time: RangeInclusive<Duration>,
   pub activity: f64,
+  pub turn_into: Option<(&'static ResData, u64)>,
+}
+
+impl ResData {
+  builder_method! {turn_into,Option<(&'static ResData, u64)>}
+
+  pub fn new(
+    item: impl Into<Item>, attempts: RangeInclusive<u64>, chance: f64, limit: u64,
+    interval: Duration, count: u64, gather_time: RangeInclusive<Duration>, activity: f64,
+  ) -> Self {
+    Self {
+      item: item.into(),
+      attempts,
+      chance,
+      limit,
+      interval,
+      last_time: Duration::ZERO,
+      count,
+      gather_time,
+      activity,
+      turn_into: None,
+    }
+  }
 }
 pub struct LocationData {
   pub pickup_stacks: ItemStacks,
-  pub restore_and_gather: Vec<RestorationData>,
+  pub restore_and_gather: Vec<ResData>,
   pub can_go: Vec<(Location, Duration)>,
 }
 impl LocationData {
   pub fn new(
-    pickup_stacks: impl Into<ItemStacks>, restore_and_gather: Vec<RestorationData>,
+    pickup_stacks: impl Into<ItemStacks>, restore_and_gather: Vec<ResData>,
     can_go: Vec<(Location, Duration)>,
   ) -> Self {
     Self { pickup_stacks: pickup_stacks.into(), restore_and_gather, can_go }
@@ -76,6 +100,7 @@ impl IndexMut<Location> for Locations {
 impl Default for Locations {
   fn default() -> Self { Self::new() }
 }
+use Location::*;
 impl Locations {
   pub fn new() -> Self {
     use crate::item::*;
@@ -83,50 +108,20 @@ impl Locations {
       LocationData::new(
         [WATER_BOTTLE.clone() * 10, BISCUIT.item() * 10, CANVAS_BACKPACK.item() * 1],
         vec![],
-        vec![(Location::Beach, 30.s())],
+        vec![(Beach, 30.s())],
       ),
       LocationData::new(
         [(BIG_ROCK, 50)],
-        vec![RestorationData {
-          item: RAW_FISH.into(),
-          attempts: 1..=2,
-          chance: 0.3,
-          limit: 10,
-          interval: 20.minute(),
-          last_time: Duration::ZERO,
-          count: 10,
-          gather_time: 120.s()..=1200.s(),
-          activity: 1.2,
-        }],
-        vec![(Location::StrandedShip, 40.s()), (Location::Forest, 3.minute())],
+        Vec::from([ResData::new(RAW_FISH, 1..=2, 0.3, 10, 20.mnt(), 10, 120.s()..=1200.s(), 1.2)]),
+        vec![(StrandedShip, 40.s()), (Forest, 3.mnt())],
       ),
       LocationData::new(
         ItemStacks(vec![]),
-        vec![
-          RestorationData {
-            item: TREE.into(),
-            attempts: 1..=1,
-            chance: 1.0,
-            limit: 600,
-            interval: 60.day(),
-            last_time: Duration::ZERO,
-            count: 500,
-            gather_time: 120.s()..=1200.s(),
-            activity: 1.2,
-          },
-          RestorationData {
-            item: TREE_VINE.into(),
-            attempts: 1..=1,
-            chance: 0.8,
-            limit: 1000,
-            interval: 10.day(),
-            last_time: Duration::ZERO,
-            count: 400,
-            gather_time: 10.s()..=30.s(),
-            activity: 1.1,
-          },
-        ],
-        vec![(Location::Beach, 3.minute())],
+        Vec::from([
+          ResData::new(TREE, 1..=1, 1.0, 600, 60.day(), 500, 120.s()..=1200.s(), 1.2),
+          ResData::new(TREE_VINE, 1..=1, 0.8, 1000, 10.day(), 400, 10.s()..=30.s(), 1.1),
+        ]),
+        vec![(Beach, 3.mnt())],
       ),
     ])
   }

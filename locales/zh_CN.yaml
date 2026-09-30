@@ -10,7 +10,7 @@ item:
     description: 一株浆果丛，上面结满了浆果。
   berry_bush_harvested:
     name: 浆果丛（已采摘）
-    description: 一株已被采摘的浆果丛。
+    description: 一株浆果丛，已被采摘，没有浆果。
   biscuit:
     name: 饼干
     description: 一些饼干，会让你口渴。
@@ -19,7 +19,7 @@ item:
     description: 清凉的水。
   raw_fish:
     name: 鱼
-    description: 新鲜的鱼，可以吃。
+    description: 新鲜的鱼，可以吃。饱含水分与能量。
   wood:
     name: 原木
     description: 一大段原木。
@@ -107,18 +107,21 @@ action:
     entry: "[%{index}] %{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
     empty: 你当前没有足够的材料来进行任何合成。
     incorrupted: 合成终止。
-    recipe:
-      dry_tree_vine:
-        name: 烤干树藤
-      vine_backpack:
-        name: 编织树藤背包
-      vine_basket:
-        name: 编织树藤筐
   travel:
     title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}"
-ui:
+crafting.recipe: 配方
+crafting:
+  recipe:
+    step: "[%{index}] %{depends} (%{time}) - %{activity}"
+    dry_tree_vine:
+      name: 烤干树藤
+    vine_backpack:
+      name: 编织树藤背包
+    vine_basket:
+      name: 编织树藤筐
+unit:
   vol:
     m3: 立方米
     L: 升
@@ -129,7 +132,7 @@ ui:
     g: 克
     mg: 毫克
     ug: 微克
-  mass:
+  len:
     km: 千米
     m: 米
     cm: 厘米
@@ -144,6 +147,7 @@ ui:
     ms: 毫秒
     µs: 微秒
     ns: 纳秒
+ui:
   get_number:
     default: （默认%{value}）
     value: （只能为%{value}）

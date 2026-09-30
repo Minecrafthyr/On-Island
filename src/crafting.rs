@@ -1,155 +1,90 @@
 use std::fmt::Write;
 
 use crate::{item::*, preclude::*};
+pub mod depends;
+use depends::*;
 
-#[derive(Clone)]
-pub struct RecipeStep {
-  pub custom_name: Option<&'static str>,
-  pub inputs: RecipeDepends,
-  pub outputs: ItemDefStacks,
-  pub time: Duration,
-  pub activity: f64,
-}
+pub const CRAFTING_RECIPES: &[Recipe] = &[
+  Recipe::new("dry_tree_vine", &[Step::new(
+    Depends::AllOf(&[
+      TREE_VINE.into(),
+      Req::from(FIRE * 100).no_consume().into(),
+      (FIRE * 25).into(),
+    ]),
+    &[(DRY_TREE_VINE * 1)],
+    1.h(),
+    1.3,
+  )]),
+  Recipe::new("vine_backpack", &[Step::new(DRY_TREE_VINE * 5, &[VINE_BACKPACK * 1], 2.h(), 1.4)]),
+  Recipe::new("vine_basket", &[Step::new(DRY_TREE_VINE * 10, &[VINE_BASKET * 1], 3.h(), 1.4)]),
+];
+
 #[derive(Clone)]
 pub struct Recipe {
   pub id: &'static str,
   pub custom_name: Option<&'static str>,
-  pub steps: &'static [RecipeStep],
+  pub steps: &'static [Step],
+}
+#[derive(Clone)]
+pub struct RecipeStep {
+  pub custom_name: Option<&'static str>,
+  pub inputs: Depends,
+  pub outputs: ItemDefStacks,
+  pub time: Duration,
+  pub activity: f64,
+}
+use RecipeStep as Step;
+
+impl Step {
+  pub const fn new(
+    inputs: impl const Into<Depends>, outputs: impl const Into<ItemDefStacks>, time: Duration,
+    activity: f64,
+  ) -> Self {
+    Self { custom_name: None, inputs: inputs.into(), outputs: outputs.into(), time, activity }
+  }
 }
 impl NameAndDesc for Recipe {
   const PREFIX: &str = "crafting.recipe";
 
-  fn get_id(&self) -> Cow<'_, str> {
-    t!(format!(
-      "crafting.recipe.{}.name",
-      if let Some(custom_name) = self.custom_name { custom_name } else { self.id }
-    ))
-  }
-}
-impl Recipe {
-  // pub fn depends(&self) -> Vec<&'static RecipeStep> { self.steps.iter() }
+  fn get_id(&self) -> Cow<'_, str> { Cow::Borrowed(self.id) }
 
-  pub fn io_text(&self) -> String {
+  fn name(&self) -> Cow<'_, str> {
+    if let Some(n) = self.custom_name {
+      t!(n)
+    } else {
+      if let s = format!("{}.{}.name", Self::PREFIX, self.get_id())
+        && let r = t!(s.clone())
+        && r != s
+      {
+        r
+      } else {
+        t!("crafting.recipe")
+      }
+    }
+  }
+
+  fn description(&self) -> Cow<'_, str> {
     let mut r = String::new();
-    for (step, rs) in self.steps.iter().enumerate() {
-      let ik = format!("crafting.step{}", step);
+    for (index, step) in self.steps.iter().enumerate() {
+      let ik = format!("crafting.recipe.{}.step.{}.name", self.id, index);
       let tik = t!(ik);
       let _ = writeln!(
         r,
         "{}",
         t!(
-          "crafting_recipe.step",
-          index = step,
+          "crafting.recipe.step",
+          index = index,
           depends = if tik != ik { tik } else { Cow::Borrowed("???") },
-          time = rs.time,
-          activity = rs.activity: {:.2}
+          time = step.time,
+          activity = step.activity: {:.2}
         )
       );
     }
-    r
+    r.into()
   }
 }
-#[derive(Clone)]
-pub enum ItemRequirements {
-  Def(&'static ItemDef),
-  Defs(&'static [&'static ItemDef]),
-  Fn(&'static dyn Fn(&Item) -> bool),
-}
-use ItemRequirements as ItemReq;
-impl ItemReq {
-  pub fn matches(&self, i: &Item) -> bool {
-    match *self {
-    ItemReq::Def(item_def) => i.def == item_def,
-    ItemReq::Defs(item_defs) => item_defs.contains(&i.def),
-    ItemReq::Fn(f) => f(i),
-    }
+impl Recipe {
+  pub const fn new(id: &'static str, steps: &'static [Step]) -> Self {
+    Self { id, custom_name: None, steps }
   }
 }
-const impl From<&'static dyn Fn(&Item) -> bool> for ItemReq {
-  fn from(value: &'static dyn Fn(&Item) -> bool) -> Self { Self::Fn(value) }
-}
-const impl From<&'static ItemDef> for ItemReq {
-  fn from(value: &'static ItemDef) -> Self { Self::Def(value) }
-}
-const impl From<&'static [&'static ItemDef]> for ItemReq {
-  fn from(value: &'static [&'static ItemDef]) -> Self { Self::Defs(value) }
-}
-#[derive(Clone)]
-pub struct RecipeRequirements {
-  pub item: ItemReq,
-  pub count: u64,
-  pub consume: bool,
-  pub one_by_one: bool,
-}
-use RecipeRequirements as Req;
-impl Req {
-  pub const fn comp(item: impl const Into<ItemReq>) -> Self {
-    Self { item: item.into(), count: 1, one_by_one: true, consume: true }
-  }
-
-  pub const fn c(mut self, count: u64) -> Self {
-    self.count = count;
-    self
-  }
-
-  pub const fn no_consume(mut self) -> Self {
-    self.consume = false;
-    self
-  }
-
-  pub const fn consume_once(mut self) -> Self {
-    self.one_by_one = false;
-    self
-  }
-}
-#[derive(Clone)]
-pub enum RecipeDepends {
-  Req(Req),
-  AllOf(&'static [RecipeDepends]),
-  AnyOf(&'static [RecipeDepends]),
-}
-impl RecipeDepends {
-  pub const fn comp(item: impl const Into<ItemReq>) -> Self { Self::Req(Req::comp(item)) }
-}
-const impl From<Req> for RecipeDepends {
-  fn from(value: Req) -> Self { Self::Req(value) }
-}
-
-pub const CRAFTING_RECIPES: &[Recipe] = &[
-  Recipe {
-    id: "dry_tree_vine",
-    custom_name: None,
-    steps: &[RecipeStep {
-      custom_name: None,
-      inputs: RecipeDepends::AllOf(&[
-        Req::comp(TREE_VINE).into(),
-        Req::comp(FIRE).c(100).no_consume().into(),
-      ]),
-      outputs: (&[(DRY_TREE_VINE, 1)]).into(),
-      time: 1.h(),
-      activity: 1.3,
-    }],
-  },
-  Recipe {
-    id: "vine_backpack",
-    custom_name: None,
-    steps: &[RecipeStep {
-      custom_name: None,
-      inputs: Req::comp(DRY_TREE_VINE).c(5).into(),
-      outputs: (&[(VINE_BACKPACK, 1)]).into(),
-      time: 2.h(),
-      activity: 1.4,
-    }],
-  },
-  Recipe {
-    id: "vine_basket",
-    custom_name: None,
-    steps: &[RecipeStep {
-      custom_name: None,
-      inputs: Req::comp(DRY_TREE_VINE).c(10).into(),
-      outputs: (&[(VINE_BASKET, 1)]).into(),
-      time: 3.h(),
-      activity: 1.4,
-    }],
-  },
-];

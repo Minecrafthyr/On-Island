@@ -50,7 +50,7 @@ impl Game {
   pub fn tick(&mut self) {
     self.time += 1.ms();
 
-    self.player.tick(1.0);
+    self.player.tick();
 
     for ld in &mut self.locations.0 {
       ld.tick(self.time, &mut self.rng);

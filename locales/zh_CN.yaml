@@ -2,21 +2,39 @@ item:
   berry:
     name: 浆果
     description: 可以吃的浆果。
+  branch:
+    name: 树枝
+    description: 长30厘米的树枝。
+  big_branch:
+    name: 大树枝
+    description: 长70厘米的粗大树枝。
+  small_branch:
+    name: 小树枝
+    description: 长15厘米的树枝尖端。
+  short_stick:
+    name: 短木棍
+    description: 长约16厘米的脆弱木棍。
+  stick:
+    name: 木棍
+    description: 长约40厘米的坚实木棍。
+  long_stick:
+    name: 长木棍
+    description: 长约120厘米的坚实木棍。
   berry_branch:
     name: 浆果枝
-    description: 一根从浆果丛上摘下来的枝条，上面挂了许多浆果。
+    description: 从浆果丛上摘下来的枝条，上面挂了许多浆果。
   berry_bush:
     name: 浆果丛
-    description: 一株浆果丛，上面结满了浆果。
+    description: 浆果丛，上面结满了浆果。
   berry_bush_harvested:
     name: 浆果丛（已采摘）
-    description: 一株浆果丛，已被采摘，没有浆果。
+    description: 浆果丛，已被采摘，没有浆果。
   biscuit:
     name: 饼干
-    description: 一些饼干，会让你口渴。
+    description: 扁平的饼干，吃了会让你口渴。
   water:
     name: 水
-    description: 清凉的水。
+    description: 清凉的水，可以饮用。
   raw_fish:
     name: 鱼
     description: 新鲜的鱼，可以吃。饱含水分与能量。
@@ -31,7 +49,7 @@ item:
     description: 尖端锋利的坚硬岩石，可用于制作工具。
   big_rock:
     name: 大石块
-    description: 一块矗立的大石块。
+    description: 矗立的大石块。
   tree_vine:
     name: 树藤
     description: 长而柔韧的树藤。
@@ -43,7 +61,7 @@ item:
     description: 用干树藤编织而成的背包。
   canvas_backpack:
     name: 帆布背包
-    description: 一款常见的帆布背包。
+    description: 常见款式的帆布背包。
 location:
   stranded_ship:
     name: 搁浅的船
@@ -51,6 +69,9 @@ location:
   beach:
     name: 海滩
     description: 一片金黄的海滩。
+  shallow_sea:
+    name: 浅海
+    description: 海边的水域，礁石嶙峋。
   forest:
     name: 森林
     description: 一片茂密的森林，树木高耸入云。
@@ -79,7 +100,7 @@ damage:
 action:
   inventory:
     title: 物品栏
-    entry: "%{name} ×%{count} {volume} {weight} - %{description}"
+    entry: "%{name} ×%{count} %{volume} %{weight} - %{description}"
   pickup:
     none: 这里没有能拾取的东西！
     title: 有以下物品可拾取：
@@ -111,6 +132,9 @@ action:
     title: "当前地点：%{current_location}\n可以前往以下地点："
     choose: 请选择要前往的地点
     entry: "[%{index}] %{name} (%{time}) - %{description}"
+use:
+  eat.name: 食用
+  drink.name: 饮用
 crafting.recipe: 配方
 crafting:
   recipe:
@@ -122,31 +146,10 @@ crafting:
     vine_basket:
       name: 编织树藤筐
 unit:
-  vol:
-    m3: 立方米
-    L: 升
-    mL: 毫升
-    uL: 微升
-  mass:
-    kg: 千克
-    g: 克
-    mg: 毫克
-    ug: 微克
-  len:
-    km: 千米
-    m: 米
-    cm: 厘米
-    mm: 毫米
-    um: 微米
-  dur:
-    w: 周
-    d: 天
-    h: 小时
-    m: 分钟
-    s: 秒
-    ms: 毫秒
-    µs: 微秒
-    ns: 纳秒
+  vol: { m3: 立方米, L: 升, mL: 毫升, uL: 微升 }
+  mass: { kg: 千克, g: 克, mg: 毫克, ug: 微克 }
+  len: { km: 千米, m: 米, cm: 厘米, mm: 毫米, um: 微米 }
+  dur: { w: 周, d: 天, h: 小时, m: 分钟, s: 秒, ms: 毫秒, µs: 微秒, ns: 纳秒 }
 ui:
   get_number:
     default: （默认%{value}）

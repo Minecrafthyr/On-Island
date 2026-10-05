@@ -1,7 +1,15 @@
 use std::borrow::Cow;
 
+use crate::item::ItemStacks;
+
 pub struct SimpleDisplay<T>(pub T);
 pub struct DetailedDisplay<T>(pub T);
+pub trait CountOf<T> {
+  fn count_of(&self, target: T) -> u64;
+}
+pub trait TakeItems<T> {
+  fn take_items(&self, target: T) -> (ItemStacks, u64);
+}
 
 pub trait NameAndDesc {
   const PREFIX: &str;

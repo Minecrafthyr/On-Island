@@ -18,7 +18,7 @@ impl Game {
       options
         .iter()
         .enumerate()
-        .map(|(i, (location, time))| DataItem {
+        .map(|(i, (location, time, _))| DataItem {
           text: t!(
             "action.travel.entry",
             index = i,
@@ -34,7 +34,7 @@ impl Game {
       return;
     };
 
-    let (new_location, travel_time) = options[choice];
+    let (new_location, travel_time, _) = options[choice];
     match self.player_action(Action::no_progress(
       "travel",
       move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)]),

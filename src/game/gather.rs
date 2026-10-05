@@ -1,7 +1,7 @@
 use rand::RngExt;
 
 use crate::{
-  game::{Duration, Game},
+  game::{Duration, Game, ToDuration},
   io::ScreenWriter,
   location::ResData,
   player::{
@@ -13,12 +13,12 @@ use crate::{
 };
 impl Game {
   pub fn gather(&mut self) {
-    let location_data = &self.locations[self.player.location];
+    let loc = &self.locations[self.player.location];
     let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
       Some(t!("action.gather.title")),
-      location_data
-        .restore_and_gather
+      loc
+        .res
         .iter()
         .enumerate()
         .map(|(i, item_stack)| DataItem {
@@ -26,7 +26,7 @@ impl Game {
             "action.gather.entry",
             index = i,
             name = item_stack.item.name(),
-            count = item_stack.count,
+            count = loc.gather_stacks[&item_stack.item].count,
             description = item_stack.item.description(),
           ),
           selected: (),
@@ -36,11 +36,10 @@ impl Game {
     )) else {
       return;
     };
-    let ResData { item, gather_time, activity, .. } =
-      location_data.restore_and_gather[choice].clone();
+    let ResData { item, gather_time, activity, .. } = loc.res[choice].clone();
 
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
-      .range(1..=location_data.restore_and_gather[choice].count)
+      .range(1..=loc.gather_stacks[&loc.res[choice].item].count)
       .default(1)
       .request()
     else {
@@ -54,17 +53,16 @@ impl Game {
       Single(f) =>
         for _ in 0..count {
           let (b, e) = gather_time.clone().into_inner();
-          let t = self.rng.random_range(b.as_s_f64()..=e.as_s_f64());
+          let t = self.rng.random_range(b.as_us()..=e.as_us());
           match self.player_action(Action::no_progress(
             "gather",
             move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-            Duration::from_s_f64(t),
+            t.us(),
           )) {
           Ok(()) => {
-            self.player.insert_stacks(f(
-              &mut self.locations[self.player.location].restore_and_gather[choice]
-            ));
-            self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+            let loc = &mut self.locations[self.player.location];
+            self.player.insert_stacks(f(&mut loc.res[choice]));
+            loc.gather_stacks[&loc.res[choice].item].count -= 1;
           }
           Err(not_ok) => {
             s.message(not_ok.to_string());
@@ -74,18 +72,16 @@ impl Game {
         },
       Multiple(f) => {
         let (b, e) = gather_time.clone().into_inner();
-        let t = self.rng.random_range(b.as_s_f64()..=e.as_s_f64());
+        let t = self.rng.random_range(b.as_us()..=e.as_us());
         match self.player_action(Action::no_progress(
           "gather",
           move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-          Duration::from_s_f64(t),
+          Duration::us(t),
         )) {
         Ok(()) => {
-          self.player.insert_stacks(f(
-            &mut self.locations[self.player.location].restore_and_gather[choice],
-            count,
-          ));
-          self.locations[self.player.location].restore_and_gather[choice].count -= 1;
+          let loc = &mut self.locations[self.player.location];
+          self.player.insert_stacks(f(&mut loc.res[choice], count));
+          loc.gather_stacks[&loc.res[choice].item].count -= 1;
         }
         Err(not_ok) => {
           s.message(not_ok.to_string());

@@ -163,18 +163,20 @@ macro_rules! unit {
 
 const K: u64 = 1000;
 const M: u64 = K * 1000;
-const B: u64 = M * 1000;
+const G: u64 = M * 1000;
+const T: u64 = G * 1000;
 
 unit! {
   pub struct Volume(u64);
-  uL: 1, mL: K, cm3: K , L: M, m3: B
+  nL: 1, uL: K, mm3: K, mL: M, cm3: M, L: G, dm3: G, m3: T
 }
 unit! {
   pub struct Mass(u64);
-  ug: 1, mg: K, g: M, kg: B
+  ug: 1, mg: K, g: M, kg: G
 }
 unit! {
-  pub struct Length(u64); um: 1, mm: K, cm: 10*K, m: M, km: B
+  pub struct Length(u64);
+  um: 1, mm: K, cm: M, m: M*100, km: G*100
 }
 unit! {
   pub struct Duration(i64);
@@ -229,6 +231,7 @@ impl std::fmt::Display for Volume {
         (Volume::FACTOR_L, "L"),
         (Volume::FACTOR_ML, "mL"),
         (Volume::FACTOR_UL, "uL"),
+        (Volume::FACTOR_UL, "nL"),
       ],
       "unit.vol",
     )

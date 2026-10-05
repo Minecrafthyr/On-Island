@@ -3,6 +3,7 @@ use std::{error::Error, fmt::Display, sync::Arc};
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 
+use crate::utils::CountOf;
 pub use crate::{
   damage::Damage,
   game::end_game,
@@ -195,10 +196,12 @@ impl Player {
   pub fn get_inventory(&self) -> Vec<&ItemStack> {
     self.worn.iter().flat_map(|i| i.pockets.iter()).flat_map(|p| p.stacks.iter()).collect()
   }
-
-  pub fn count_of_matching<F: Fn(&Item) -> bool>(&self, f: F) -> u64 {
+}
+impl<F: Fn(&Item) -> bool> CountOf<F> for Player {
+  fn count_of(&self, f: F) -> u64 {
     self.get_inventory().into_iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
   }
-
-  pub fn count_of(&self, item: &Item) -> u64 { self.count_of_matching(|ei| ei == item) }
+}
+impl CountOf<&Item> for Player {
+  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
 }

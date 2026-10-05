@@ -1,10 +1,12 @@
 use std::{borrow::Cow, ops::Mul};
 
+use enumflags2::BitFlags;
+
 use super::*;
 use crate::{
   builder_method,
   item::container::{Pocket, PocketDef},
-  location::ResData,
+  location::{ResData, WaterYield},
   player::Player,
   utils::NameAndDesc,
 };
@@ -12,6 +14,7 @@ use crate::{
 pub struct UseData {
   pub usage: &'static str,
   pub dur: Duration,
+  pub batch: (usize, f64),
   pub activity: f64,
   pub on_use: fn(&mut Player),
 }
@@ -27,21 +30,84 @@ pub enum Phase {
   Liquid,
   Gas,
 }
-type SingleRestorationFn = fn(&mut ResData) -> ItemStacks;
-type MultipleRestorationFn = fn(&mut ResData, u64) -> ItemStacks;
+type SingleResFn = fn(&mut ResData) -> ItemStacks;
+type MultipleResFn = fn(&mut ResData, u64) -> ItemStacks;
 /// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
 pub enum GatherStacks {
   None,
-  Single(SingleRestorationFn),
-  Multiple(MultipleRestorationFn),
+  Single(SingleResFn),
+  Multiple(MultipleResFn),
 }
-impl From<SingleRestorationFn> for GatherStacks {
-  fn from(value: SingleRestorationFn) -> Self { Self::Single(value) }
+impl From<SingleResFn> for GatherStacks {
+  fn from(value: SingleResFn) -> Self { Self::Single(value) }
 }
-impl From<MultipleRestorationFn> for GatherStacks {
-  fn from(value: MultipleRestorationFn) -> Self { Self::Multiple(value) }
+impl From<MultipleResFn> for GatherStacks {
+  fn from(value: MultipleResFn) -> Self { Self::Multiple(value) }
 }
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum Required {
+  Yes,
+  No,
+  None,
+}
+impl From<bool> for Required {
+  fn from(value: bool) -> Self { if value { Self::Yes } else { Self::No } }
+}
+impl From<Option<bool>> for Required {
+  fn from(value: Option<bool>) -> Self {
+    if let Some(cond) = value { if cond { Self::Yes } else { Self::No } } else { Self::None }
+  }
+}
+#[derive(PartialEq)]
+pub enum Condition {
+  AlwaysTrue,
+  AirExposure(bool),
+  Gather { dirt: Option<bool>, sand: Option<bool>, water: Option<BitFlags<WaterYield>> },
+  AllOf(&'static [Self]),
+  AnyOf(&'static [Self]),
+}
+#[derive(Clone, Copy)]
+pub struct EnvContext {
+  air: bool,
+  dirt: bool,
+  sand: bool,
+  water: WaterYield,
+}
+impl Condition {
+  pub fn matches(&self, env: &EnvContext) -> bool {
+    use Condition::*;
+    match self {
+    AlwaysTrue => true,
+    Gather { dirt, sand, water } => todo!(),
+    AirExposure(a) => *a == env.air,
+    AllOf(conditions) => conditions.iter().all(|c| c.matches(env)),
+    AnyOf(conditions) => conditions.iter().any(|c| c.matches(env)),
+    }
+  }
+}
+#[allow(unpredictable_function_pointer_comparisons)]
+#[derive(PartialEq)]
+pub struct ConversionDef {
+  cond: Condition,
+  dur: Duration,
+  into: fn() -> ItemStacks,
+}
+impl ConversionDef {
+  pub const fn new(cond: Condition, dur: Duration, into: fn() -> ItemStacks) -> Self {
+    Self { cond, dur, into }
+  }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Conversion {
+  def: &'static ConversionDef,
+  progress: Duration,
+}
+impl From<&'static ConversionDef> for Conversion {
+  fn from(value: &'static ConversionDef) -> Self { Self { def: value, progress: Duration::ZERO } }
+}
+
 #[derive(Clone)]
 pub struct ItemDef {
   pub id: &'static str,
@@ -52,6 +118,7 @@ pub struct ItemDef {
   pub pockets: &'static [PocketDef],
   pub gather: GatherStacks,
   pub uses: &'static [UseData],
+  pub conversions: &'static [ConversionDef],
 }
 
 const impl Mul<u64> for &'static ItemDef {
@@ -64,6 +131,21 @@ impl NameAndDesc for ItemDef {
   const PREFIX: &str = "item";
 
   fn get_id(&self) -> Cow<'_, str> { self.id.into() }
+}
+impl ItemDef {
+  pub const fn new(id: &'static str, volume: Volume, weight: Mass) -> Self {
+    Self {
+      id,
+      volume,
+      weight,
+      phase: Phase::Solid,
+      longest_side: Length::ZERO,
+      pockets: &[],
+      gather: GatherStacks::None,
+      uses: &[],
+      conversions: &[],
+    }
+  }
 }
 
 impl ItemDef {
@@ -81,18 +163,7 @@ impl ItemDef {
 
   builder_method! {pockets, &'static [PocketDef]}
 
-  pub const fn new(id: &'static str, volume: Volume, weight: Mass) -> Self {
-    Self {
-      id,
-      volume,
-      weight,
-      phase: Phase::Solid,
-      longest_side: Length::ZERO,
-      pockets: &[],
-      gather: GatherStacks::None,
-      uses: &[],
-    }
-  }
+  builder_method! {conversions, &'static [ConversionDef]}
 
   pub fn item(&'static self) -> Item { Item::from(self) }
 
@@ -110,16 +181,30 @@ impl std::hash::Hash for ItemDef {
 pub struct Item {
   pub def: &'static ItemDef,
   pub pockets: Vec<Pocket>,
+  pub conv: Vec<Conversion>,
 }
 
-impl Mul<u64> for Item {
+const impl Mul<u64> for Item {
   type Output = ItemStack;
 
   fn mul(self, rhs: u64) -> Self::Output { ItemStack::new(self, rhs) }
 }
 
 impl Item {
-  pub const fn new(def: &'static ItemDef) -> Self { Self { def, pockets: Vec::new() } }
+  pub const fn new(def: &'static ItemDef) -> Self { Self { def, pockets: vec![], conv: vec![] } }
+
+  pub fn tick(&mut self, env: &EnvContext) -> ItemStacks {
+    for Conversion { def, progress } in &mut self.conv {
+      let ConversionDef { cond, dur, into } = def;
+      if cond.matches(env) {
+        *progress += 1.ms();
+      }
+      if *progress >= *dur {
+        return into();
+      }
+    }
+    ItemStacks::new()
+  }
 
   pub fn has_free_pockets(&self) -> bool {
     self.pockets.iter().filter(|p| p.capacity > p.volume_used && p.max_weight > p.weight).count()
@@ -182,6 +267,10 @@ impl Deref for Item {
 }
 impl From<&'static ItemDef> for Item {
   fn from(value: &'static ItemDef) -> Self {
-    Self { def: value, pockets: value.pockets.iter().map(|d| d.into()).collect() }
+    Self {
+      def: value,
+      pockets: value.pockets.iter().map(|d| d.into()).collect(),
+      conv: value.conversions.iter().map(|c| c.into()).collect(),
+    }
   }
 }

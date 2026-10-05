@@ -29,18 +29,21 @@ macro_rules! defines {
 }
 defines! {
   ItemDef,
-  "biscuit": new(mL(100), g(20)).uses(&[UseData {
+  "sand": new(65.nL(), 170.ug()),
+  "biscuit": new(100.mL(), 20.g()).uses(&[UseData {
     usage: "eat",
     dur: 5.s(),
+    batch: (3, 0.7),
     activity: 1.03,
     on_use: |player| {
     player.energy += 1.h();
     player.water -= 1.h();
   },
   }]),
-  "berry": new(mL(6), g(3)).uses(&[UseData {
+  "berry": new(6.mL(), 3.g()).uses(&[UseData {
     usage: "eat",
     dur: 100.ms(),
+    batch: (2, 0.5),
     activity: 1.02,
     on_use: |player| {
     player.energy += 2.mnt();
@@ -50,27 +53,61 @@ defines! {
   "berry_branch": new(300.mL(), 200.g()),
   "berry_bush": new(6.L(), 2.kg()),
   "berry_bush_harvested": new(5.L(), 1200.g()),
-  "water": new(1.mL(),1.g()).phase(Phase::Liquid).uses(&[UseData {
+  "water": new(1.uL(),1.mg()).phase(Phase::Liquid).uses(&[UseData {
     usage: "drink",
-    dur: 1.ms(),
+    dur: 10.ms(),
+    batch: (2, 0.0),
     activity: 1.01,
     on_use: |player| {
-    player.water += 30.s();
-  },
+      player.water += 30.s();
+    },
+  }]),
+  "sea_water": new(1.uL(),1025.ug()).phase(Phase::Liquid).uses(&[UseData {
+    usage: "drink",
+    dur: 10.ms(),
+    batch: (2, 0.0),
+    activity: 1.01,
+    on_use: |player| {
+      player.water += 30.s();
+      todo!("salt")
+    },
   }]),
   "plastic_bottle": new(521.mL(), 10.g()).pockets(
     &[PocketDef::new("plastic_bottle.main", 500.mL(), 900.g(), true).can_store_liquid()]
   ),
-  "raw_fish": new(1.L(), 1200.g()).gather(
-    GatherStacks::Single(|_rd| [ItemStack::from_def(RAW_FISH, 1)].into())
+  "living_fish": new(1.L(), 1200.g()).gather(
+    GatherStacks::Single(|_rd| [RAW_FISH * 1].into())
   ).uses(&[UseData {
     usage: "eat",
-    dur: 60.s(),
+    dur: 135.s(),
+    batch: (1, 1.0),
+    activity: 1.1,
+    on_use: |player| {
+      player.energy += 2.h();
+      player.water += 55.mnt();
+    }}]
+  ).conversions(&[ConversionDef::new(Condition::AlwaysTrue, 10.mnt(), || ItemStacks(vec![RAW_FISH.item() * 1]))]),
+  "raw_fish": new(1.L(), 1200.g()).gather(
+    GatherStacks::Single(|_rd| [RAW_FISH * 1].into())
+  ).uses(&[UseData {
+    usage: "eat",
+    dur: 115.s(),
+    batch: (1, 1.0),
     activity: 1.06,
     on_use: |player| {
-    player.energy += 2.h();
-    player.water += 50.mnt();
-  },
+      player.energy += 2.h();
+      player.water += 50.mnt();
+    },
+  }]),
+  "grilled_fish": new(900.mL(), 1050.g()).uses(&[UseData {
+    usage: "eat",
+    dur: 105.s(),
+    batch: (1, 1.0),
+    activity: 1.06,
+    on_use: |player| {
+      player.energy += 4.h();
+      player.water += 20.mnt();
+    },
   }]),
   "tree": new(150.L(), 100.kg()).gather(
     GatherStacks::Single(|_rd| [

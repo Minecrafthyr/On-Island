@@ -1,4 +1,7 @@
+use std::ops::{Index, IndexMut};
+
 use super::*;
+use crate::utils::CountOf;
 #[derive(Clone, Copy)]
 #[derive_const(Default)]
 pub struct ItemDefStacks(pub &'static [ItemDefStack]);
@@ -20,6 +23,28 @@ const impl<const S: usize> From<&'static [ItemDefStack; S]> for ItemDefStacks {
 
 #[derive(Clone, PartialEq)]
 pub struct ItemStacks(pub Vec<ItemStack>);
+
+impl Index<usize> for ItemStacks {
+  type Output = ItemStack;
+
+  fn index(&self, index: usize) -> &Self::Output { &self.0[index] }
+}
+impl IndexMut<usize> for ItemStacks {
+  fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut self.0[index] }
+}
+impl Index<&Item> for ItemStacks {
+  type Output = ItemStack;
+
+  fn index(&self, index: &Item) -> &Self::Output {
+    self.0.iter().find(|i| &i.item == index).unwrap()
+  }
+}
+impl IndexMut<&Item> for ItemStacks {
+  fn index_mut(&mut self, index: &Item) -> &mut Self::Output {
+    self.0.iter_mut().find(|i| &i.item == index).unwrap()
+  }
+}
+
 const impl Deref for ItemStacks {
   type Target = Vec<ItemStack>;
 
@@ -47,17 +72,19 @@ impl ItemStacks {
     }
   }
 
+  pub fn insert_stack_from(&mut self, item: &Item, count: u64) {
+    if let Some(f) = self.iter_mut().find(|ei| &ei.item == item) {
+      f.count += count;
+    } else {
+      self.push(item.clone() * count);
+    }
+  }
+
   pub fn insert_stacks(&mut self, stacks: ItemStacks) {
     for stack in stacks.0 {
       self.insert_stack(stack);
     }
   }
-
-  pub fn count_of_matching<F: Fn(&Item) -> bool>(&self, f: F) -> u64 {
-    self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
-  }
-
-  pub fn count_of(&self, item: &Item) -> u64 { self.count_of_matching(|ei| ei == item) }
 
   pub fn remove_items(&mut self, item: &Item, count: u64) {
     self.take_items_matching(|ei| ei == item, count);
@@ -82,6 +109,14 @@ impl ItemStacks {
     }
     (removed, count)
   }
+}
+impl<F: Fn(&Item) -> bool> CountOf<F> for ItemStacks {
+  fn count_of(&self, f: F) -> u64 {
+    self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
+  }
+}
+impl CountOf<&Item> for ItemStacks {
+  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
 }
 
 impl<I, C: IntoIterator<Item = I>> From<C> for ItemStacks

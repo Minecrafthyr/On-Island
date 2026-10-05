@@ -16,9 +16,9 @@
 #![allow(incomplete_features, clippy::missing_transmute_annotations)]
 
 use crate::game::Game;
-pub mod crafting;
 pub mod damage;
 pub mod game;
+pub mod recipe;
 // pub mod i18n;
 pub mod io;
 pub mod item;
@@ -28,7 +28,6 @@ pub mod preclude;
 pub mod ui;
 pub mod units;
 pub mod utils;
-
 #[macro_use]
 extern crate rust_i18n;
 i18n!("locales", fallback = "en");

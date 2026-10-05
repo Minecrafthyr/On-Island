@@ -1,42 +1,36 @@
 use itertools::Itertools;
 
 use crate::{
-  crafting::{
-    CRAFTING_RECIPES, RecipeStep,
-    depends::{Depends, Req},
-  },
   game::Game,
   io::ScreenWriter,
+  item::Item,
   player::{
     Effect, Player,
     action::{Action, ActionContent},
   },
   preclude::*,
+  recipe::{
+    crafting::{CRAFTING_RECIPES, Step},
+    depends::{ConsumeType, Depends, Req},
+  },
   ui::{DataItem, DisplayList, NumberRequester},
+  utils::CountOf,
 };
-pub fn test_req(p: &Player, req: &Req) -> u64 {
-  let matched = p.count_of_matching(|i| req.item.matches(i));
-  if req.consume { matched / req.count } else { u64::MAX }
-}
-pub fn max_batch_count(p: &Player, depends: &Depends) -> u64 {
+
+pub fn max_batch(p: &Player, depends: &Depends) -> u64 {
   use Depends::*;
   match depends {
-  AnyOf(items) => items.iter().fold(0u64, |b, d| b.max(max_batch_count(p, d))),
-  AllOf(items) => items.iter().fold(0u64, |b, d| b.min(max_batch_count(p, d))),
-  Req(req) => test_req(p, req),
+  AnyOf(items) => items.iter().fold(0u64, |b, d| b.max(max_batch(p, d))),
+  AllOf(items) => items.iter().fold(0u64, |b, d| b.min(max_batch(p, d))),
+  Req(req) => {
+    let matched = p.count_of(|i: &Item| req.item.matches(i));
+    if req.consume != ConsumeType::None { matched / req.count } else { u64::MAX }
+  }
   }
 }
 
 impl Game {
-  // TODO: resume and one by one taking recipe req :)
   pub fn craft(&mut self) {
-    // pub fn test_depends(p: &Player, depends: &Depends) -> bool {
-    //   match depends {
-    //   Depends::AnyOf(items) => items.iter().any(|i| test_depends(p, i)),
-    //   Depends::AllOf(items) => items.iter().all(|i| test_depends(p, i)),
-    //   Depends::Req(req) => test_req(p, req) > 1,
-    //   }
-    // }
     let options: Vec<_> = CRAFTING_RECIPES.iter().collect();
     let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
@@ -59,13 +53,14 @@ impl Game {
     };
     let recipe = options[choice];
     let Some(batch_count) = NumberRequester::new(t!("action.crafting.how_many"))
-      .range(1..=max_batch_count(&self.player, &recipe.steps[0].inputs)) // TODO: fix this
+      .range(1..=max_batch(&self.player, &recipe.steps[0].inputs)) // TODO: fix this
       .default(1)
       .request()
     else {
       return;
     };
     for _ in 0..batch_count {
+      // TODO: resume and one by one taking recipe req :)
       for rs in recipe.steps.iter() {
         match self.player_action(Action::no_progress(
           "crafting",
@@ -84,9 +79,9 @@ impl Game {
     }
   }
 
-  pub fn apply_recipe_step(&mut self, recipe: &RecipeStep) -> bool {
+  pub fn apply_recipe_step(&mut self, recipe: &Step) -> bool {
     pub fn take_req(p: &mut Player, req: &Req) {
-      if !req.consume {
+      if req.consume == ConsumeType::None {
         return;
       }
       p.take_items_matching(|i| req.item.matches(i), req.count);
@@ -97,9 +92,7 @@ impl Game {
         p,
         items
           .iter()
-          .sorted_by(|l, r|
-          // currently select reqs has max max_batch_count
-          max_batch_count(p, l).cmp(&max_batch_count(p, r)))
+          .sorted_by(|l, r| max_batch(p, l).cmp(&max_batch(p, r))) // currently select reqs has highest max_batch_count
           .last()
           .unwrap(),
       ),

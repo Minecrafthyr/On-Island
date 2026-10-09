@@ -1,5 +1,6 @@
 use crate::preclude::*;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Damage {
   pub id: &'static str,
   pub amount: f64,

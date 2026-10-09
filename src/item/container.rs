@@ -1,5 +1,5 @@
 use super::*;
-use crate::builder_method;
+use crate::{builder_method, utils::TakeItems};
 
 pub struct CloseData {}
 
@@ -18,7 +18,9 @@ impl PartialEq for PocketDef {
 }
 impl Eq for PocketDef {}
 impl PocketDef {
-  builder_method!(specify_items, Option<fn(&Item) -> bool>);
+  builder_method! {
+    specify_items: Option<fn(&Item) -> bool>
+  }
 
   pub const fn new(id: &'static str, capacity: Volume, max_weight: Mass, rigid: bool) -> Self {
     Self {
@@ -78,20 +80,45 @@ impl Pocket {
     self.weight = self.stacks.iter().fold(Mass::ZERO, |v, i| v + i.weight());
   }
 
-  pub fn holdable_count(&self, stack: &ItemStack) -> u64 {
+  pub fn holdable_count_i(&self, item: &Item, count: u64) -> u64 {
     if self.closed
-      || (!self.def.can_store_liquid && stack.item.phase == Phase::Liquid)
-      || self.def.specify_items.map(|f| f(&stack.item)) == Some(false)
+      || (!self.def.can_store_liquid && item.phase == Phase::Liquid)
+      || self.def.specify_items.map(|f| f(item)) == Some(false)
     {
       return 0;
     }
-    let volume_cap: u64 = ((self.capacity - self.volume_used) / stack.item.volume.into()).into();
-    let max_hold = volume_cap.min(stack.count);
+    let volume_cap: u64 = ((self.capacity - self.volume_used) / item.volume.into()).into();
+    let max_hold = volume_cap.min(count);
     if max_hold == 0 {
       return 0;
     }
-    let weight_cap = ((self.max_weight - self.weight) / stack.item.weight.into()).into();
+    let weight_cap = ((self.max_weight - self.weight) / item.weight.into()).into();
     max_hold.min(weight_cap)
+  }
+
+  pub fn holdable_count(&self, stack: &ItemStack) -> u64 {
+    self.holdable_count_i(&stack.item, stack.count)
+  }
+
+  // pub fn insert_items(&mut self, item: &Item, count: u64) {
+  //   let count = self.holdable_count(stack);
+  //   if count == 0 {
+  //     return;
+  //   }
+  //   self.volume_used += stack.item.volume * count;
+  //   self.weight += stack.item.weight * count;
+  //   stack.count -= count;
+  //   self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
+  // }
+
+  pub fn insert_items(&mut self, item: &Item, count: u64) {
+    let count = self.holdable_count_i(item, count);
+    if count == 0 {
+      return;
+    }
+    self.volume_used += item.volume * count;
+    self.weight += item.weight * count;
+    self.stacks.insert_stack(item.clone() * count);
   }
 
   pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
@@ -123,19 +150,19 @@ impl Pocket {
     self.insert_stacks_from(&mut stacks);
     if stacks.is_empty() { None } else { Some(stacks) }
   }
-
-  pub fn take_items_matching(
-    &mut self, f: impl Fn(&Item) -> bool, count: u64,
-  ) -> (ItemStacks, u64) {
-    let (removed, mismatch) = self.stacks.take_items_matching(f, count);
+}
+impl TakeItems<&Item> for Pocket {
+  fn take_items(&mut self, item: &Item, count: u64) -> (ItemStacks, u64) {
+    self.take_items(|ei: &Item| ei == item, count)
+  }
+}
+impl<F: Fn(&Item) -> bool> TakeItems<F> for Pocket {
+  fn take_items(&mut self, f: F, count: u64) -> (ItemStacks, u64) {
+    let (removed, mismatch) = self.stacks.take_items(f, count);
     for is in &removed.0 {
       self.volume_used -= is.volume();
       self.weight -= is.weight();
     }
     (removed, mismatch)
-  }
-
-  pub fn remove_items(&mut self, item: &Item, count: u64) {
-    self.take_items_matching(|ei| ei == item, count);
   }
 }

@@ -93,7 +93,7 @@ impl NameAndDesc for Crafting {
     for (index, step) in self.steps.iter().enumerate() {
       let ik = format!("crafting.recipe.{}.step.{}.name", self.id, index);
       let tik = t!(ik);
-      let _ = writeln!(
+      _ = writeln!(
         r,
         "{}",
         t!(
@@ -109,7 +109,7 @@ impl NameAndDesc for Crafting {
   }
 }
 impl Crafting {
-  builder_method! {custom_name,Option<&'static str>}
+  builder_method! {custom_name: Option<&'static str>}
 
   pub const fn new(id: &'static str, batch: (usize, f64), steps: &'static [Step]) -> Self {
     Self { id, custom_name: None, batch, steps }

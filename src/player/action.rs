@@ -42,7 +42,7 @@ impl Action {
 }
 impl Player {
   fn eval_actions(&mut self) {
-    let funcs: Vec<_> = self.actions.iter().map(|a| a.func.clone()).collect();
+    let funcs = self.actions.iter().map(|a| a.func.clone()).collect_vec();
     'func: for f in funcs {
       let ActionContent { body_parts, effects } = (f)(self);
       for (bp, is_exclusive) in body_parts {
@@ -79,11 +79,10 @@ impl Player {
 
   pub fn try_push_action(&mut self, action: Action) -> Result<(), PushActionError> {
     let ActionContent { body_parts, effects: _ } = (action.func)(self);
-    for (bp, _is_exclusive) in body_parts {
-      if self.used_body_parts.iter_mut().contains(&(bp, true)) {
-        return Err(PushActionError::BodyPartUsed);
-      }
+    if body_parts.into_iter().any(|(bp, _)| self.used_body_parts.contains(&(bp, true))) {
+      Err(PushActionError::BodyPartUsed)
+    } else {
+      Ok(())
     }
-    Ok(())
   }
 }

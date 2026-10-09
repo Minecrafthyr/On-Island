@@ -1,4 +1,5 @@
 use super::*;
+use crate::builder_method;
 #[derive(Clone)]
 pub enum ItemReq {
   Def(&'static ItemDef),
@@ -49,14 +50,9 @@ const impl From<ItemDefStack> for Req {
   }
 }
 impl Req {
-  pub const fn count(mut self, count: u64) -> Self {
-    self.count = count;
-    self
-  }
-
-  pub const fn consume(mut self, consume: ConsumeType) -> Self {
-    self.consume = consume;
-    self
+  builder_method! {
+    count: u64,
+    consume: ConsumeType
   }
 }
 #[derive(Clone)]

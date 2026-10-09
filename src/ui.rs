@@ -7,7 +7,7 @@ use std::{
 
 use crossterm::{
   cursor::{MoveLeft, MoveRight, MoveTo, position},
-  event::{Event, KeyCode, read},
+  event::{Event, KeyCode, KeyEvent, read},
   execute, queue,
   style::{Attribute::Bold, Print, Stylize},
   terminal::{Clear, ClearType::UntilNewLine},
@@ -58,64 +58,64 @@ impl<
     let mut p = format!("\n{}", self.prompt);
     self.default.map(|d| write!(p, "{}", t!("ui.get_number.default", default = d)));
     if let Some(r) = &self.range {
-      let _ = match r.start_bound() {
+      _ = match r.start_bound() {
       Bound::Included(v) => write!(p, "[{}", v),
       Bound::Excluded(v) => write!(p, "({}", v),
       Bound::Unbounded => p.write_str("(-∞"),
       };
-      let _ = p.write_str(", ");
-      let _ = match r.end_bound() {
+      _ = p.write_str(", ");
+      _ = match r.end_bound() {
       Bound::Included(v) => write!(p, "{}]", v),
       Bound::Excluded(v) => write!(p, "{})", v),
       Bound::Unbounded => p.write_str("+∞)"),
       };
     }
     write!(p, "：").unwrap();
-    s.lines(&p).end();
+    s.writeln(&p).end();
 
     let mut buf = String::new();
-    loop {
+    while let Ok(Event::Key(KeyEvent { code, .. })) = read() {
       // let (x, y) = position().unwrap();
-      let Event::Key(key_event) = read().unwrap() else { continue };
-      if key_event.code == KeyCode::Esc {
-        return None;
-      }
-      if let KeyCode::Char(ch) = key_event.code
-        && ch.is_ascii_digit()
-      {
+      use KeyCode::*;
+      match code {
+      Esc => break,
+      Char(ch) if ch.is_ascii_digit() => {
         buf.push(ch);
         execute!(s.out, MoveRight(1), Print(&buf), Clear(UntilNewLine)).unwrap();
       }
-      if key_event.code == KeyCode::Backspace {
+      Backspace => {
         buf.pop();
         execute!(s.out, MoveLeft(1), Print(&buf), Clear(UntilNewLine)).unwrap();
       }
-      if key_event.code == KeyCode::Enter {
+      Enter => {
         let number = if buf.is_empty() {
           if let Some(v) = self.default {
             v
           } else {
-            s.endl().lines(t!("ui.get_number.empty", prompt = p)).flush();
+            s.endl().writeln(t!("ui.get_number.empty", prompt = p)).flush();
             continue;
           }
         } else {
           buf.parse().unwrap()
         };
         if self.range.as_ref().map(|r| !r.contains(&number)).unwrap_or(false) {
-          s.endl().lines(t!("ui.get_number.invalid", prompt = p)).flush();
+          s.endl().writeln(t!("ui.get_number.invalid", prompt = p)).flush();
           buf.clear();
           continue;
         }
         if let Some(c) = self.check
           && let Some(f) = c(number)
         {
-          s.lines(format!("\n{f}{p}")).flush();
+          s.endl().write(f).write(&p).endl().flush();
           buf.clear();
           continue;
         }
         return Some(number);
       }
+      _ => {}
+      }
     }
+    None
   }
 }
 pub struct DataItem<
@@ -140,7 +140,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, Ent
         write!(s, "{}", (selected)(text).as_ref().attribute(Bold)).unwrap();
         s.endl();
       } else {
-        s.lines(text);
+        s.writeln(text.as_ref());
       }
     }
   }
@@ -150,7 +150,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, EnterFn> DrawEntries
 {
   fn draw_entries(&mut self, s: &mut ScreenWriter) {
     for DataItem { text, .. } in self.data.iter_mut() {
-      s.lines(text);
+      s.writeln(text.as_ref());
     }
   }
 }
@@ -192,7 +192,7 @@ pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn
   title: Option<TitleT>,
   data: Vec<DataItem<StrT, SelectedFn, EnterFn>>,
   selecting: usize,
-  flow: bool,
+  overflow: bool,
   indexed: bool,
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
@@ -204,7 +204,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
       title,
       data,
       selecting: 0,
-      flow: true,
+      overflow: true,
       indexed: false,
     }
   }
@@ -221,7 +221,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
   }
 
   fn recalc_select(&mut self) {
-    if self.flow {
+    if self.overflow {
       self.selecting %= self.data.len();
     } else {
       if self.selecting >= self.data.len() {
@@ -242,9 +242,8 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
     self
   }
 
-  /// Disable flow from max to zero index
-  pub fn no_flow(mut self) -> Self {
-    self.flow = false;
+  pub fn no_overflow(mut self) -> Self {
+    self.overflow = false;
     self
   }
 }
@@ -257,7 +256,7 @@ where
     'io: loop {
       queue!(s.out, MoveTo(self.origin_row, 0)).unwrap();
       if let Some(t) = self.title.as_ref() {
-        s.lines(t);
+        s.writeln(t.as_ref());
       }
       if self.data.is_empty() {
         s.message(t!("ui.display_list.empty"));
@@ -265,13 +264,19 @@ where
       }
       self.draw_entries(s);
       s.end();
+      let mut last_press = std::time::Instant::now();
+      let mut count = 0usize;
+
       loop {
-        let Event::Key(key_event) = read().unwrap() else { continue };
+        let Event::Key(KeyEvent { code, modifiers: _, kind, state: _ }) = read().unwrap() else {
+          continue;
+        };
+        let now = std::time::Instant::now();
         use KeyCode::*;
-        match key_event.code {
+        match code {
         Up =>
           if self.selecting == 0 {
-            if self.flow {
+            if self.overflow {
               self.selecting = self.data.len() - 1;
               continue 'io;
             }
@@ -281,7 +286,7 @@ where
           },
         Down =>
           if self.selecting == self.data.len() - 1 {
-            if self.flow {
+            if self.overflow {
               self.selecting = 0;
               continue 'io;
             }
@@ -290,13 +295,25 @@ where
             continue 'io;
           },
         Enter => {
-          if let Some(r) = self.enter(s) {
-            return Some(r);
+          if let r @ Some(_) = self.enter(s) {
+            return r;
           }
           break;
         }
         Esc => return None,
+        Char(n) if kind.is_press() && matches!(n, '0'..'9') => {
+          let n = n.to_digit(10).unwrap() as usize;
+          if now - last_press < std::time::Duration::from_millis(300) {
+            count = (count * 10 + n).min(self.data.len() - 1);
+            self.selecting = count;
+          } else {
+            count = n;
+          }
+        }
         _ => {}
+        }
+        if kind.is_press() {
+          last_press = now;
         }
       }
     }
@@ -313,9 +330,9 @@ impl ScreenWriter {
   }
 
   pub fn message(&mut self, msg: impl AsRef<str>) -> &mut Self {
-    self.lines(msg).end();
+    self.writeln(msg.as_ref()).end();
     sleep(AVOID_MISTAKE_INPUT_DUR);
-    self.lines(t!("ui.continue_prompt")).flush();
+    self.writeln(t!("ui.continue_prompt")).flush();
     loop {
       if let Event::Key(key_event) = read().unwrap()
         && key_event.is_press()

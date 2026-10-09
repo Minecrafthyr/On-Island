@@ -124,7 +124,7 @@ impl LocationData {
             count += 1;
           }
         }
-        self.gather_stacks.insert_stack_from(&r.item, count);
+        self.gather_stacks.insert_items(&r.item, count);
       }
     }
   }

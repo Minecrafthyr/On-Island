@@ -15,25 +15,26 @@ impl Game {
   pub fn gather(&mut self) {
     let loc = &self.locations[self.player.location];
     let mut s = ScreenWriter::new_screen();
-    let Some(choice) = s.list(DisplayList::new(
-      Some(t!("action.gather.title")),
-      loc
-        .res
-        .iter()
-        .enumerate()
-        .map(|(i, item_stack)| DataItem {
-          text: t!(
-            "action.gather.entry",
-            index = i,
-            name = item_stack.item.name(),
-            count = loc.gather_stacks[&item_stack.item].count,
-            description = item_stack.item.description(),
-          ),
-          selected: (),
-          enter: |i| Ok(i),
-        })
-        .collect(),
-    )) else {
+    let Some(choice) = s.list(
+      DisplayList::new(
+        Some(t!("action.gather.title")),
+        loc
+          .res
+          .iter()
+          .map(|item_stack| DataItem {
+            text: t!(
+              "action.gather.entry",
+              name = item_stack.item.name(),
+              count = loc.gather_stacks[&item_stack.item].count,
+              description = item_stack.item.description(),
+            ),
+            selected: (),
+            enter: |i| Ok(i),
+          })
+          .collect(),
+      )
+      .indexing(),
+    ) else {
       return;
     };
     let ResData { item, gather_time, activity, .. } = loc.res[choice].clone();

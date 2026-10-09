@@ -1,14 +1,13 @@
 use std::{borrow::Cow, ops::Mul};
 
-use enumflags2::BitFlags;
-
 use super::*;
 use crate::{
   builder_method,
+  env::{EnvCondition, EnvContext},
   item::container::{Pocket, PocketDef},
-  location::{ResData, WaterYield},
+  location::ResData,
   player::Player,
-  utils::NameAndDesc,
+  utils::{NameAndDesc, TakeItems},
 };
 #[derive(Clone, Copy)]
 pub struct UseData {
@@ -45,38 +44,10 @@ impl From<SingleResFn> for GatherStacks {
 impl From<MultipleResFn> for GatherStacks {
   fn from(value: MultipleResFn) -> Self { Self::Multiple(value) }
 }
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Required {
-  Yes,
-  No,
-  None,
-}
-impl From<bool> for Required {
-  fn from(value: bool) -> Self { if value { Self::Yes } else { Self::No } }
-}
-impl From<Option<bool>> for Required {
-  fn from(value: Option<bool>) -> Self {
-    if let Some(cond) = value { if cond { Self::Yes } else { Self::No } } else { Self::None }
-  }
-}
-#[derive(PartialEq)]
-pub enum Condition {
-  AlwaysTrue,
-  AirExposure(bool),
-  Gather { dirt: Option<bool>, sand: Option<bool>, water: Option<BitFlags<WaterYield>> },
-  AllOf(&'static [Self]),
-  AnyOf(&'static [Self]),
-}
-#[derive(Clone, Copy)]
-pub struct EnvContext {
-  air: bool,
-  dirt: bool,
-  sand: bool,
-  water: WaterYield,
-}
-impl Condition {
+
+impl EnvCondition {
   pub fn matches(&self, env: &EnvContext) -> bool {
-    use Condition::*;
+    use EnvCondition::*;
     match self {
     AlwaysTrue => true,
     Gather { dirt, sand, water } => todo!(),
@@ -89,12 +60,12 @@ impl Condition {
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(PartialEq)]
 pub struct ConversionDef {
-  cond: Condition,
+  cond: EnvCondition,
   dur: Duration,
   into: fn() -> ItemStacks,
 }
 impl ConversionDef {
-  pub const fn new(cond: Condition, dur: Duration, into: fn() -> ItemStacks) -> Self {
+  pub const fn new(cond: EnvCondition, dur: Duration, into: fn() -> ItemStacks) -> Self {
     Self { cond, dur, into }
   }
 }
@@ -149,27 +120,20 @@ impl ItemDef {
 }
 
 impl ItemDef {
-  builder_method! {id, &'static str}
-
-  builder_method! {volume, Volume}
-
-  builder_method! {weight, Mass}
-
-  builder_method! {phase, Phase}
-
-  builder_method! {gather, GatherStacks}
-
-  builder_method! {uses, &'static [UseData]}
-
-  builder_method! {pockets, &'static [PocketDef]}
-
-  builder_method! {conversions, &'static [ConversionDef]}
+  builder_method! {
+    id: &'static str,
+    volume: Volume,
+    weight: Mass,
+    phase: Phase,
+    gather: GatherStacks,
+    uses: &'static [UseData],
+    pockets: &'static [PocketDef],
+    conversions: &'static [ConversionDef]
+  }
 
   pub fn item(&'static self) -> Item { Item::from(self) }
 
-  pub const fn with_id(id: &'static str) -> Self {
-    Self::new(id, Default::default(), Default::default())
-  }
+  pub const fn with_id(id: &'static str) -> Self { Self::new(id, Volume::ZERO, Mass::ZERO) }
 }
 impl PartialEq for ItemDef {
   fn eq(&self, other: &Self) -> bool { self.id == other.id }
@@ -193,6 +157,7 @@ const impl Mul<u64> for Item {
 impl Item {
   pub const fn new(def: &'static ItemDef) -> Self { Self { def, pockets: vec![], conv: vec![] } }
 
+  // TODO: call this function, tick items
   pub fn tick(&mut self, env: &EnvContext) -> ItemStacks {
     for Conversion { def, progress } in &mut self.conv {
       let ConversionDef { cond, dur, into } = def;
@@ -243,13 +208,12 @@ impl Item {
     }
     *stacks = std::mem::take(stacks).0.into_iter().filter(|stack| stack.count != 0).collect();
   }
-
-  pub fn take_items_matching(
-    &mut self, f: impl Fn(&Item) -> bool, mut count: u64,
-  ) -> (ItemStacks, u64) {
+}
+impl<F: Fn(&Item) -> bool> TakeItems<F> for Item {
+  fn take_items(&mut self, f: F, mut count: u64) -> (ItemStacks, u64) {
     let mut removed_total = ItemStacks::new();
     for p in &mut self.pockets {
-      let (removed, mismatch) = p.take_items_matching(&f, count);
+      let (removed, mismatch) = p.take_items(&f, count);
       removed_total.insert_stacks(removed);
       count = mismatch;
       if count == 0 {

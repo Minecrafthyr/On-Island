@@ -3,10 +3,9 @@ use std::{error::Error, fmt::Display, sync::Arc};
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 
-use crate::utils::CountOf;
+use crate::utils::{CountOf, TakeItems};
 pub use crate::{
   damage::Damage,
-  game::end_game,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
   location::Location,
   player::action::Action,
@@ -57,6 +56,31 @@ impl Player {
     })
   }
 }
+#[derive(Debug, Clone)]
+pub struct Endgame {
+  damage: Option<Damage>,
+  message: Option<String>,
+}
+impl From<Damage> for Endgame {
+  fn from(value: Damage) -> Self { Self { damage: Some(value), message: None } }
+}
+impl From<String> for Endgame {
+  fn from(value: String) -> Self { Self { damage: None, message: Some(value) } }
+}
+impl Display for Endgame {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    if let Some(dmg) = self.damage {
+      write!(f, "{}", t!("game.over_message", message = dmg.death_message()))
+    } else {
+      write!(f, "{}", t!("game.over"))
+    }?;
+    if let Some(ref msg) = self.message {
+      write!(f, "\n{msg}")?
+    }
+    Ok(())
+  }
+}
+impl Error for Endgame {}
 impl Player {
   pub fn new() -> Self {
     Player {
@@ -85,30 +109,29 @@ impl Player {
     base
   }
 
-  pub fn damage(&mut self, dmg: Damage) {
+  pub fn damage(&mut self, dmg: Damage) -> Result<(), Endgame> {
     self.health -= dmg.amount;
-    if self.health < 0.0 {
-      end_game(dmg.death_message());
-    }
+    if self.health < 0.0 { Err(dmg.into()) } else { Ok(()) }
   }
 
-  pub fn tick(&mut self) {
+  pub fn tick(&mut self) -> Result<(), Endgame> {
     let dur = 1.ms() * self.get_activity();
     self.energy -= dur;
     self.water -= dur;
     self.tick_actions();
 
     if self.energy <= 24.h() {
-      self.damage(Damage::new("starve", 0.001));
+      self.damage(Damage::new("starve", 0.001))?;
     }
     if self.water <= 24.h() {
-      self.damage(Damage::new("dehydrate", 0.001));
+      self.damage(Damage::new("dehydrate", 0.001))?;
     }
 
     if self.energy > 48.h() && self.water > 48.h() && self.health < 1.0 {
       self.energy -= dur;
       self.health += 0.001;
     }
+    Ok(())
   }
 
   pub fn max_carry_weight(&self) -> Mass { kg(60) * self.get_efficiency() }
@@ -163,18 +186,6 @@ impl Player {
     if stacks.is_empty() { None } else { Some(stacks) }
   }
 
-  pub fn take_items_matching<F: Fn(&Item) -> bool>(
-    &mut self, f: F, mut count: u64,
-  ) -> (ItemStacks, u64) {
-    let mut removed = ItemStacks::new();
-    for p in self.worn.iter_mut().flat_map(|i| i.pockets.iter_mut()) {
-      let (r, m) = p.take_items_matching(&f, count);
-      removed.insert_stacks(r);
-      count = m;
-    }
-    (removed, count)
-  }
-
   pub fn pickup_time(&self, item: &Item) -> Option<(Duration, f64)> {
     if item.weight > self.max_pickup_weight() {
       return None;
@@ -193,15 +204,26 @@ impl Player {
     Some((Duration::from_s_f64(time_seconds), activity))
   }
 
-  pub fn get_inventory(&self) -> Vec<&ItemStack> {
-    self.worn.iter().flat_map(|i| i.pockets.iter()).flat_map(|p| p.stacks.iter()).collect()
+  pub fn get_inventory(&self) -> impl Iterator<Item = &ItemStack> {
+    self.worn.iter().flat_map(|i| &i.pockets).flat_map(|p| p.stacks.iter())
   }
 }
 impl<F: Fn(&Item) -> bool> CountOf<F> for Player {
   fn count_of(&self, f: F) -> u64 {
-    self.get_inventory().into_iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
+    self.get_inventory().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
   }
 }
 impl CountOf<&Item> for Player {
   fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
+}
+impl<F: Fn(&Item) -> bool> TakeItems<F> for Player {
+  fn take_items(&mut self, f: F, mut count: u64) -> (ItemStacks, u64) {
+    let mut removed = ItemStacks::new();
+    for p in self.worn.iter_mut().flat_map(|i| i.pockets.iter_mut()) {
+      let (r, m) = p.take_items(&f, count);
+      removed.insert_stacks(r);
+      count = m;
+    }
+    (removed, count)
+  }
 }

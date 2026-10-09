@@ -3,12 +3,13 @@ use itertools::Itertools;
 use crate::{
   game::Game,
   io::ScreenWriter,
+  item::Item,
   player::{
     Effect,
     action::{Action, ActionContent},
   },
   ui::{DataItem, DisplayList, NumberRequester},
-  utils::NameAndDesc,
+  utils::{NameAndDesc, TakeItems},
 };
 
 impl Game {
@@ -29,11 +30,9 @@ impl Game {
       Some(t!("action.use_item.title")),
       options
         .iter()
-        .enumerate()
-        .map(|(i, is)| DataItem {
+        .map(|is| DataItem {
           text: t!(
             "action.use_item.entry",
-            index = i,
             name = is.item.name(),
             count = is.count,
             uses = is.item.uses.iter().map(|ud| ud.name()).join(" "),
@@ -49,24 +48,25 @@ impl Game {
     let item_stack = options[choice].clone();
     let item = &item_stack.item;
     let uses_data = item.uses;
-    let Some(choice) = s.list(DisplayList::new(
-      Some(t!("action.use_item.data.title", item = item.name())),
-      uses_data
-        .iter()
-        .enumerate()
-        .map(|(i, ud)| DataItem {
-          text: t!(
-            "action.use_item.data",
-            index = i,
-            duration = ud.dur.as_s_f64() : {:.2},
-            activity = ud.activity: {:.2},
-            description = ud.description()
-          ),
-          selected: (),
-          enter: |i| Ok(i),
-        })
-        .collect(),
-    )) else {
+    let Some(choice) = s.list(
+      DisplayList::new(
+        Some(t!("action.use_item.data.title", item = item.name())),
+        uses_data
+          .iter()
+          .map(|ud| DataItem {
+            text: t!(
+              "action.use_item.data",
+              duration = ud.dur.as_s_f64() : {:.2},
+              activity = ud.activity: {:.2},
+              description = ud.description()
+            ),
+            selected: (),
+            enter: |i| Ok(i),
+          })
+          .collect(),
+      )
+      .indexing(),
+    ) else {
       return;
     };
     let use_data = uses_data[choice];
@@ -85,7 +85,7 @@ impl Game {
         use_data.dur,
       )) {
       Ok(()) => {
-        let (_removed, mismatch) = self.player.take_items_matching(|i| i == item, 1);
+        let (_removed, mismatch) = self.player.take_items(|i: &Item| i == item, 1);
         if mismatch == 0 {
           (use_data.on_use)(&mut self.player);
           return;

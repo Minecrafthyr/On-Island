@@ -1,19 +1,15 @@
-use std::{error::Error, fmt::Display, io::stdout, thread::sleep};
+use std::{error::Error, fmt::Display};
 
-use crossterm::{
-  event::{Event, KeyCode, KeyEvent, read},
-  execute,
-  terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+use crossterm::event::{Event, KeyCode, KeyEvent, read};
 use rand::rngs::ThreadRng;
-use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
+use strum_macros::{EnumCount, IntoStaticStr};
 
 pub use crate::preclude::*;
 use crate::{
   io::ScreenWriter,
   location::Locations,
   player::{
-    Effect, Player,
+    Effect, Endgame, Player,
     action::{Action, ActionContent},
   },
   ui::NumberRequester,
@@ -31,38 +27,40 @@ pub struct Game {
   pub time: Duration,
   pub locations: Locations,
   pub player: Player,
+  pub endgame_message: Option<String>,
 }
 
 impl Game {
-  pub fn new() -> std::io::Result<Self> {
-    let g = Game {
+  pub fn new() -> Self {
+    Self {
       rng: rand::rng(),
       time: Duration::ZERO,
       locations: Locations::new(),
       player: Player::new(),
-    };
-    execute!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode().unwrap();
-    Ok(g)
+      endgame_message: None,
+    }
   }
 
   /// ms
-  pub fn tick(&mut self) {
+  pub fn tick(&mut self) -> Result<(), Endgame> {
     self.time += 1.ms();
 
-    self.player.tick();
+    self.player.tick()?;
 
     for ld in &mut self.locations.0 {
       ld.tick(self.time, &mut self.rng);
     }
+    Ok(())
   }
 }
-#[derive(
-  Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
-)]
+#[derive(Debug, Clone, EnumCount, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum WaitActionError {
   LowEfficiency,
+  Death(Endgame),
+}
+impl From<Endgame> for WaitActionError {
+  fn from(value: Endgame) -> Self { Self::Death(value) }
 }
 impl NameAndDesc for WaitActionError {
   const PREFIX: &str = "wait_action_result";
@@ -76,7 +74,7 @@ impl Display for WaitActionError {
 impl Game {
   pub fn wait_player_action(&mut self, id: &'static str) -> Result<(), WaitActionError> {
     while let Some(_) = self.player.actions.iter().find(|a| a.id == id) {
-      self.tick();
+      self.tick()?;
       if self.player.get_efficiency() < 0.25 {
         return Err(WaitActionError::LowEfficiency);
       }
@@ -91,29 +89,32 @@ impl Game {
     Ok(())
   }
 
-  pub fn time_pass(&mut self, time: Duration) {
+  pub fn time_pass(&mut self, time: Duration) -> Result<(), Endgame> {
     if time == Duration::ZERO {
-      return;
+      return Ok(());
     }
     for _ in 0..=time.as_ms() {
-      self.tick();
+      self.tick()?;
     }
+    Ok(())
   }
 
   fn render(&mut self) {
-    let mut s = ScreenWriter::new_screen();
-    s.lines(t!("game.title")).endl();
-    s.lines(t!(
-      "game.stats",
-      name = t!("attribute.health.name"),
-      value = format!("{:.2}%", self.player.health)
-    ));
-    s.lines(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy));
-    s.lines(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water));
-    s.lines(t!("game.status_line", location = self.player.location.name())).end();
+    ScreenWriter::new_screen()
+      .writeln(t!("game.title"))
+      .endl()
+      .writeln(t!(
+        "game.stats",
+        name = t!("attribute.health.name"),
+        value = format!("{:.2}%", self.player.health)
+      ))
+      .writeln(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy))
+      .writeln(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water))
+      .writeln(t!("game.status_line", location = self.player.location.name()))
+      .end();
   }
 
-  pub fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+  pub fn run(&mut self) -> Result<!, Box<dyn std::error::Error>> {
     loop {
       self.render();
       match read().unwrap() {
@@ -126,8 +127,10 @@ impl Game {
       'u' => self.use_item(),
       'i' => self.inventory(),
       'w' => self.worn(),
-      'r' => self.rest(),
-      'q' => end_game(t!("game.quit")),
+      'r' => self.rest()?,
+      'q' => {
+        return Err(t!("game.quit").into());
+      }
       _ => {}
       },
       KeyCode::Esc => self.menu(),
@@ -140,13 +143,13 @@ impl Game {
 
   pub fn menu(&mut self) {}
 
-  pub fn rest(&mut self) {
+  pub fn rest(&mut self) -> Result<(), Endgame> {
     let mut s = ScreenWriter::new_screen();
     s.end();
     let Some(sec) =
       NumberRequester::new(t!("action.rest.prompt")).range(0..=10000).default(10).request()
     else {
-      return;
+      return Ok(());
     };
     match self.player_action(Action::no_progress(
       "rest",
@@ -156,18 +159,9 @@ impl Game {
     Ok(()) => {}
     Err(not_ok) => {
       s.message(not_ok.to_string());
-      return;
+      return Ok(());
     }
     }
-    self.time_pass(Duration::s(sec));
+    self.time_pass(Duration::s(sec))
   }
-}
-
-pub fn end_game(message: impl Display) {
-  ScreenWriter::new_screen().lines(t!("game.over_message", message = message)).end();
-  sleep(std::time::Duration::from_secs(2));
-  execute!(stdout(), LeaveAlternateScreen).unwrap();
-  disable_raw_mode().unwrap();
-  println!("{}", t!("game.over_message", message = message));
-  std::process::exit(0);
 }

@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 
 use super::*;
-use crate::utils::CountOf;
+use crate::utils::{CountOf, TakeItems};
 #[derive(Clone, Copy)]
 #[derive_const(Default)]
 pub struct ItemDefStacks(pub &'static [ItemDefStack]);
@@ -72,7 +72,7 @@ impl ItemStacks {
     }
   }
 
-  pub fn insert_stack_from(&mut self, item: &Item, count: u64) {
+  pub fn insert_items(&mut self, item: &Item, count: u64) {
     if let Some(f) = self.iter_mut().find(|ei| &ei.item == item) {
       f.count += count;
     } else {
@@ -85,14 +85,22 @@ impl ItemStacks {
       self.insert_stack(stack);
     }
   }
-
-  pub fn remove_items(&mut self, item: &Item, count: u64) {
-    self.take_items_matching(|ei| ei == item, count);
+}
+impl<F: Fn(&Item) -> bool> CountOf<F> for ItemStacks {
+  fn count_of(&self, f: F) -> u64 {
+    self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
   }
-
-  pub fn take_items_matching<F: Fn(&Item) -> bool>(
-    &mut self, f: F, mut count: u64,
-  ) -> (ItemStacks, u64) {
+}
+impl CountOf<&Item> for ItemStacks {
+  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
+}
+impl TakeItems<&Item> for ItemStacks {
+  fn take_items(&mut self, item: &Item, count: u64) -> (ItemStacks, u64) {
+    self.take_items(|ei: &Item| ei == item, count)
+  }
+}
+impl<F: Fn(&Item) -> bool> TakeItems<F> for ItemStacks {
+  fn take_items(&mut self, f: F, mut count: u64) -> (ItemStacks, u64) {
     let mut removed = ItemStacks::new();
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
@@ -109,14 +117,6 @@ impl ItemStacks {
     }
     (removed, count)
   }
-}
-impl<F: Fn(&Item) -> bool> CountOf<F> for ItemStacks {
-  fn count_of(&self, f: F) -> u64 {
-    self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
-  }
-}
-impl CountOf<&Item> for ItemStacks {
-  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
 }
 
 impl<I, C: IntoIterator<Item = I>> From<C> for ItemStacks

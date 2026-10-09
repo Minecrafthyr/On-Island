@@ -25,20 +25,13 @@ impl ScreenWriter {
   pub fn new() -> Self { Self { out: stdout() } }
 
   pub fn new_screen() -> Self {
-    let mut s = Self { out: stdout() };
-    queue!(s.out, MoveTo(0, 0)).unwrap();
-    s
+    let mut out = stdout();
+    queue!(out, MoveTo(0, 0)).unwrap();
+    Self { out }
   }
 
-  pub fn line(&mut self, line: impl Display) -> &mut Self {
-    write!(self.out, "{line}").unwrap();
-    self.endl()
-  }
-
-  pub fn lines(&mut self, s: impl AsRef<str>) -> &mut Self {
-    for line in s.as_ref().lines() {
-      self.line(line);
-    }
+  pub fn write(&mut self, s: impl Display) -> &mut Self {
+    write!(self.out, "{s}").unwrap();
     self
   }
 
@@ -46,6 +39,8 @@ impl ScreenWriter {
     queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).unwrap();
     self
   }
+
+  pub fn writeln(&mut self, s: impl Display) -> &mut Self { self.write(s).endl() }
 
   pub fn flush(&mut self) { self.out.flush().unwrap() }
 

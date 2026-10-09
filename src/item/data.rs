@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 use rand::random_range;
 
 use super::*;
+use crate::env::EnvCondition;
 
 macro_rules! defines {
   (
@@ -86,7 +87,7 @@ defines! {
       player.energy += 2.h();
       player.water += 55.mnt();
     }}]
-  ).conversions(&[ConversionDef::new(Condition::AlwaysTrue, 10.mnt(), || ItemStacks(vec![RAW_FISH.item() * 1]))]),
+  ).conversions(&[ConversionDef::new(EnvCondition::AlwaysTrue, 10.mnt(), || ItemStacks(vec![RAW_FISH.item() * 1]))]),
   "raw_fish": new(1.L(), 1200.g()).gather(
     GatherStacks::Single(|_rd| [RAW_FISH * 1].into())
   ).uses(&[UseData {

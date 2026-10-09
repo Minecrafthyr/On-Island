@@ -14,7 +14,7 @@ use crate::{
     depends::{ConsumeType, Depends, Req},
   },
   ui::{DataItem, DisplayList, NumberRequester},
-  utils::CountOf,
+  utils::{CountOf, TakeItems},
 };
 
 pub fn max_batch(p: &Player, depends: &Depends) -> u64 {
@@ -40,11 +40,7 @@ impl Game {
         .enumerate()
         .map(|(i, recipe)| DataItem {
           text: t!("action.craft.entry", index = i, title = recipe.name()),
-          selected: |o: &Cow<'_, str>| {
-            let mut s = o.to_string();
-            s.push_str(&recipe.description());
-            Cow::Owned(s)
-          },
+          selected: |o: &Cow<'_, str>| Cow::Owned(o.to_string() + &recipe.description()),
           enter: |i| Ok(i),
         })
         .collect(),
@@ -67,9 +63,11 @@ impl Game {
           |_| ActionContent::new(vec![], vec![Effect::ActivityMul(rs.activity)]),
           rs.time,
         )) {
-        Ok(()) => {
-          self.apply_recipe_step(rs);
-        }
+        Ok(()) =>
+          if !self.apply_recipe_step(rs) {
+            s.message(t!("action.crafting.apply_failed", recipe = recipe.name()));
+            return;
+          },
         Err(not_ok) => {
           s.message(not_ok.to_string());
           return;
@@ -84,7 +82,7 @@ impl Game {
       if req.consume == ConsumeType::None {
         return;
       }
-      p.take_items_matching(|i| req.item.matches(i), req.count);
+      p.take_items(|i: &Item| req.item.matches(i), req.count);
     }
     pub fn take_depends(p: &mut Player, depends: &Depends) {
       match depends {

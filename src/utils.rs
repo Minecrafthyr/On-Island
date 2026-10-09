@@ -1,14 +1,27 @@
 use std::borrow::Cow;
 
 use crate::item::ItemStacks;
-
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum Required {
+  Yes,
+  No,
+  None,
+}
+impl From<bool> for Required {
+  fn from(value: bool) -> Self { if value { Self::Yes } else { Self::No } }
+}
+impl From<Option<bool>> for Required {
+  fn from(value: Option<bool>) -> Self {
+    if let Some(cond) = value { if cond { Self::Yes } else { Self::No } } else { Self::None }
+  }
+}
 pub struct SimpleDisplay<T>(pub T);
 pub struct DetailedDisplay<T>(pub T);
 pub trait CountOf<T> {
   fn count_of(&self, target: T) -> u64;
 }
 pub trait TakeItems<T> {
-  fn take_items(&self, target: T) -> (ItemStacks, u64);
+  fn take_items(&mut self, target: T, count: u64) -> (ItemStacks, u64);
 }
 
 pub trait NameAndDesc {
@@ -22,7 +35,13 @@ pub trait NameAndDesc {
 
 #[macro_export]
 macro_rules! builder_method {
-  ($field:ident, Option<$inner:ty>) => {
+  {$field:ident: $Fty:ty} => {
+    pub const fn $field(mut self, value: $Fty) -> Self {
+      self.$field = value;
+      self
+    }
+  };
+  {$field:ident: Option<$inner:ty>} => {
     ::paste::paste! {
       pub const fn [< $field _option >](mut self, value: Option<$inner>) -> Self {
         self.$field = value;
@@ -34,12 +53,8 @@ macro_rules! builder_method {
       self
     }
   };
-
-  ($field:ident, $Fty:ty) => {
-    pub const fn $field(mut self, value: $Fty) -> Self {
-      self.$field = value;
-      self
-    }
+  {$($f:ident : $t:ty),+$(,)?} => {
+    $(builder_method! {$f: $t})+
   };
 }
 #[macro_export]

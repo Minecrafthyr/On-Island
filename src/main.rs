@@ -26,7 +26,7 @@ pub mod damage;
 pub mod game;
 pub mod recipe;
 // pub mod i18n;
-pub mod env;
+// pub mod env;
 pub mod io;
 pub mod item;
 pub mod location;
@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   execute!(stdout(), EnterAlternateScreen)?;
   enable_raw_mode()?;
-  let Err(e) = Game::new().run();
+  let Err(e) = Game::default().run();
   if let Some(endgame) = e.downcast_ref::<Endgame>() {
     ScreenWriter::new_screen().writeln(endgame.to_string()).end();
     sleep(std::time::Duration::from_secs(2));

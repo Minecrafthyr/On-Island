@@ -7,7 +7,8 @@ use strum_macros::{EnumCount, IntoStaticStr};
 pub use crate::preclude::*;
 use crate::{
   io::ScreenWriter,
-  location::Locations,
+  item::ItemStacks,
+  location::{EnvData, Locations},
   player::{
     Effect, Endgame, Player,
     action::{Action, ActionContent},
@@ -22,6 +23,7 @@ pub mod pickup;
 pub mod travel;
 pub mod use_item;
 pub mod worn;
+#[derive(Default)]
 pub struct Game {
   pub rng: ThreadRng,
   pub time: Duration,
@@ -31,24 +33,38 @@ pub struct Game {
 }
 
 impl Game {
-  pub fn new() -> Self {
-    Self {
-      rng: rand::rng(),
-      time: Duration::ZERO,
-      locations: Locations::new(),
-      player: Player::new(),
-      endgame_message: None,
-    }
-  }
+  // pub fn new() -> Self {
+  //   Self {
+  //     rng: rand::rng(),
+  //     time: Duration::ZERO,
+  //     locations: Locations::new(),
+  //     player: Player::new(),
+  //     endgame_message: None,
+  //   }
+  // }
 
   /// ms
   pub fn tick(&mut self) -> Result<(), Endgame> {
     self.time += 1.ms();
 
     self.player.tick()?;
-
     for ld in &mut self.locations.0 {
       ld.tick(self.time, &mut self.rng);
+    }
+    use EnvData::*;
+    let env = self.locations[self.player.location]
+      .env
+      .iter()
+      .filter(|env_bit| matches!(env_bit, NaturalAir | CaveAir | NoAir))
+      .collect();
+    let mut converted = ItemStacks::new();
+    for mut s in
+      self.player.worn.iter().flat_map(|i| i.pockets.iter()).flat_map(|p| p.stacks.iter()).cloned()
+    {
+      s.item.tick(env).map(|ss| converted.insert_stacks(ss));
+    }
+    if let Some(left) = self.player.insert_stacks(converted) {
+      self.locations[self.player.location].pickup_stacks.insert_stacks(left);
     }
     Ok(())
   }

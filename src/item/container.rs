@@ -1,15 +1,21 @@
+use inew::New;
+
 use super::*;
 use crate::{builder_method, utils::TakeItems};
 
 pub struct CloseData {}
-
+#[derive(New)]
+#[new(const = true)]
 pub struct PocketDef {
   pub id: &'static str,
   pub capacity: Volume,
   pub max_weight: Mass,
   pub rigid: bool,
+  #[new(default = false)]
   pub can_store_liquid: bool,
+  #[new(default = false)]
   pub can_store_gas: bool,
+  #[new(default = None)]
   pub specify_items: Option<fn(&Item) -> bool>,
 }
 
@@ -19,19 +25,8 @@ impl PartialEq for PocketDef {
 impl Eq for PocketDef {}
 impl PocketDef {
   builder_method! {
+    const;
     specify_items: Option<fn(&Item) -> bool>
-  }
-
-  pub const fn new(id: &'static str, capacity: Volume, max_weight: Mass, rigid: bool) -> Self {
-    Self {
-      id,
-      capacity,
-      max_weight,
-      rigid,
-      can_store_liquid: false,
-      can_store_gas: false,
-      specify_items: None,
-    }
   }
 
   pub const fn can_store_liquid(mut self) -> Self {
@@ -111,25 +106,27 @@ impl Pocket {
   //   self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
   // }
 
-  pub fn insert_items(&mut self, item: &Item, count: u64) {
+  pub fn insert_items(&mut self, item: &Item, count: u64) -> u64 {
     let count = self.holdable_count_i(item, count);
     if count == 0 {
-      return;
+      return 0;
     }
     self.volume_used += item.volume * count;
     self.weight += item.weight * count;
     self.stacks.insert_stack(item.clone() * count);
+    count
   }
 
-  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
+  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) -> u64 {
     let count = self.holdable_count(stack);
     if count == 0 {
-      return;
+      return 0;
     }
     self.volume_used += stack.item.volume * count;
     self.weight += stack.item.weight * count;
     stack.count -= count;
     self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
+    count
   }
 
   pub fn insert_stack(&mut self, mut stack: ItemStack) -> Option<ItemStack> {

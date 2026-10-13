@@ -1,7 +1,9 @@
 use std::ops::{Index, IndexMut};
 
+use inew::New;
+
 use super::*;
-use crate::utils::{CountOf, TakeItems};
+use crate::utils::{IterStack, TakeItems};
 #[derive(Clone, Copy)]
 #[derive_const(Default)]
 pub struct ItemDefStacks(pub &'static [ItemDefStack]);
@@ -22,8 +24,15 @@ const impl<const S: usize> From<&'static [ItemDefStack; S]> for ItemDefStacks {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct ItemStacks(pub Vec<ItemStack>);
+#[derive_const(Default, New)]
+#[new(const = true)]
+pub struct ItemStacks(#[new(default = vec![])] pub Vec<ItemStack>);
+impl IntoIterator for ItemStacks {
+  type IntoIter = <Vec<stack::ItemStack> as IntoIterator>::IntoIter;
+  type Item = ItemStack;
 
+  fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
+}
 impl Index<usize> for ItemStacks {
   type Output = ItemStack;
 
@@ -54,13 +63,14 @@ const impl DerefMut for ItemStacks {
   fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
 }
 
-const impl Default for ItemStacks {
-  fn default() -> Self { Self::new() }
-}
 impl ItemStacks {
   pub fn iter(&self) -> impl Iterator<Item = &ItemStack> { self.0.iter() }
 
-  pub const fn new() -> Self { Self(Vec::new()) }
+  pub fn insert_from_defs(&mut self, defs: ItemDefStacks) {
+    for def in defs.into_iter() {
+      self.insert_stack((*def).into());
+    }
+  }
 
   pub fn insert_item(&mut self, item: Item) { self.insert_stack(ItemStack { item, count: 1 }); }
 
@@ -86,13 +96,8 @@ impl ItemStacks {
     }
   }
 }
-impl<F: Fn(&Item) -> bool> CountOf<F> for ItemStacks {
-  fn count_of(&self, f: F) -> u64 {
-    self.iter().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
-  }
-}
-impl CountOf<&Item> for ItemStacks {
-  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
+impl IterStack for ItemStacks {
+  fn iter_stack(&self) -> impl Iterator<Item = &ItemStack> { self.iter() }
 }
 impl TakeItems<&Item> for ItemStacks {
   fn take_items(&mut self, item: &Item, count: u64) -> (ItemStacks, u64) {
@@ -119,17 +124,8 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for ItemStacks {
   }
 }
 
-impl<I, C: IntoIterator<Item = I>> From<C> for ItemStacks
-where
-  ItemStack: From<I>,
-{
-  fn from(value: C) -> Self { Self::from_iter(value) }
-}
-impl<I> FromIterator<I> for ItemStacks
-where
-  ItemStack: From<I>,
-{
+impl<I: Into<ItemStack>> FromIterator<I> for ItemStacks {
   fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
-    Self(iter.into_iter().map(ItemStack::from).collect())
+    Self(iter.into_iter().map(|i| i.into()).collect())
   }
 }

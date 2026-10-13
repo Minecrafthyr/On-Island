@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::item::ItemStacks;
+use crate::item::{ItemStack, ItemStacks};
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Required {
   Yes,
@@ -17,9 +17,11 @@ impl From<Option<bool>> for Required {
 }
 pub struct SimpleDisplay<T>(pub T);
 pub struct DetailedDisplay<T>(pub T);
-pub trait CountOf<T> {
-  fn count_of(&self, target: T) -> u64;
+
+pub trait IterStack {
+  fn iter_stack(&self) -> impl Iterator<Item = &ItemStack>;
 }
+
 pub trait TakeItems<T> {
   fn take_items(&mut self, target: T, count: u64) -> (ItemStacks, u64);
 }
@@ -35,13 +37,19 @@ pub trait NameAndDesc {
 
 #[macro_export]
 macro_rules! builder_method {
-  {$field:ident: $Fty:ty} => {
-    pub const fn $field(mut self, value: $Fty) -> Self {
-      self.$field = value;
+  {$field:ident: Option<$inner:ty>} => {
+    ::paste::paste! {
+      pub fn [< $field _option >](mut self, value: Option<$inner>) -> Self {
+        self.$field = value;
+        self
+      }
+    }
+    pub fn $field(mut self, value: $inner) -> Self {
+      self.$field = Some(value);
       self
     }
   };
-  {$field:ident: Option<$inner:ty>} => {
+  {const $field:ident: Option<$inner:ty>} => {
     ::paste::paste! {
       pub const fn [< $field _option >](mut self, value: Option<$inner>) -> Self {
         self.$field = value;
@@ -53,8 +61,29 @@ macro_rules! builder_method {
       self
     }
   };
-  {$($f:ident : $t:ty),+$(,)?} => {
-    $(builder_method! {$f: $t})+
+  {$field:ident: $Fty:ty} => {
+    pub fn $field(mut self, value: $Fty) -> Self {
+      self.$field = value;
+      self
+    }
+  };
+  {const $field:ident: $Fty:ty} => {
+    pub const fn $field(mut self, value: $Fty) -> Self {
+      self.$field = value;
+      self
+    }
+  };
+  {$($field:ident: Option<$Fty:ty>),+$(,)?} => {
+    $($crate::builder_method! {$field : Option<$Fty>})+
+  };
+  {$($field:ident: $Fty:ty),+$(,)?} => {
+    $($crate::builder_method! {$field : $Fty})+
+  };
+  {const; $($field:ident: Option<$Fty:ty>),+$(,)?} => {
+    $($crate::builder_method! {const $field : Option<$Fty>})+
+  };
+  {const; $($field:ident: $Fty:ty),+$(,)?} => {
+    $($crate::builder_method! {const $field : $Fty})+
   };
 }
 #[macro_export]

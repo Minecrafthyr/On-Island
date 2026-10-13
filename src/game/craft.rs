@@ -3,30 +3,39 @@ use itertools::Itertools;
 use crate::{
   game::Game,
   io::ScreenWriter,
-  item::Item,
+  item::{Item, ItemStack, ItemStacks},
   player::{
     Effect, Player,
     action::{Action, ActionContent},
   },
   preclude::*,
   recipe::{
-    crafting::{CRAFTING_RECIPES, Step},
+    crafting::{CRAFTING_RECIPES, Crafting, Step},
     depends::{ConsumeType, Depends, Req},
   },
   ui::{DataItem, DisplayList, NumberRequester},
-  utils::{CountOf, TakeItems},
+  utils::{IterStack, TakeItems},
 };
-
-pub fn max_batch(p: &Player, depends: &Depends) -> u64 {
+pub fn max_batch(c: &Vec<&ItemStack>, depends: &Depends) -> u64 {
   use Depends::*;
   match depends {
-  AnyOf(items) => items.iter().fold(0u64, |b, d| b.max(max_batch(p, d))),
-  AllOf(items) => items.iter().fold(0u64, |b, d| b.min(max_batch(p, d))),
+  AnyOf(items) => items.iter().fold(0u64, |b, d| b.max(max_batch(c, d))),
+  AllOf(items) => items.iter().fold(0u64, |b, d| b.min(max_batch(c, d))),
   Req(req) => {
-    let matched = p.count_of(|i: &Item| req.item.matches(i));
+    let matched: u64 = c.iter().filter(|s| req.item.matches(&s.item)).map(|s| s.count).sum();
     if req.consume != ConsumeType::None { matched / req.count } else { u64::MAX }
   }
   }
+}
+pub fn max_batch_craft(c: &impl IterStack, craft: &Crafting) -> u64 {
+  let mut new_items_pool = ItemStacks::new();
+  let mut count = u64::MAX;
+  for step in craft.steps {
+    count = count
+      .min(max_batch(&c.iter_stack().chain(new_items_pool.iter_stack()).collect(), &step.inputs));
+    new_items_pool.insert_from_defs(step.outputs);
+  }
+  count
 }
 
 impl Game {
@@ -49,7 +58,7 @@ impl Game {
     };
     let recipe = options[choice];
     let Some(batch_count) = NumberRequester::new(t!("action.crafting.how_many"))
-      .range(1..=max_batch(&self.player, &recipe.steps[0].inputs)) // TODO: fix this
+      .range(1..=max_batch(&self.player.iter_stack().collect(), &recipe.steps[0].inputs)) // TODO: fix this
       .default(1)
       .request()
     else {
@@ -90,7 +99,9 @@ impl Game {
         p,
         items
           .iter()
-          .sorted_by(|l, r| max_batch(p, l).cmp(&max_batch(p, r))) // currently select reqs has highest max_batch_count
+          .sorted_by(|l, r| {
+            max_batch(&p.iter_stack().collect(), l).cmp(&max_batch(&p.iter_stack().collect(), r))
+          }) // currently select reqs has highest max_batch_count.collect()
           .last()
           .unwrap(),
       ),

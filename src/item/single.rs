@@ -1,11 +1,13 @@
 use std::{borrow::Cow, ops::Mul};
 
+use enumflags2::BitFlags;
+use inew::New;
+
 use super::*;
 use crate::{
   builder_method,
-  env::{EnvCondition, EnvContext},
   item::container::{Pocket, PocketDef},
-  location::ResData,
+  location::{EnvCondition, EnvData, ResData},
   player::Player,
   utils::{NameAndDesc, TakeItems},
 };
@@ -45,29 +47,13 @@ impl From<MultipleResFn> for GatherStacks {
   fn from(value: MultipleResFn) -> Self { Self::Multiple(value) }
 }
 
-impl EnvCondition {
-  pub fn matches(&self, env: &EnvContext) -> bool {
-    use EnvCondition::*;
-    match self {
-    AlwaysTrue => true,
-    Gather { dirt, sand, water } => todo!(),
-    AirExposure(a) => *a == env.air,
-    AllOf(conditions) => conditions.iter().all(|c| c.matches(env)),
-    AnyOf(conditions) => conditions.iter().any(|c| c.matches(env)),
-    }
-  }
-}
 #[allow(unpredictable_function_pointer_comparisons)]
-#[derive(PartialEq)]
+#[derive(PartialEq, New)]
+#[new(const = true)]
 pub struct ConversionDef {
   cond: EnvCondition,
   dur: Duration,
   into: fn() -> ItemStacks,
-}
-impl ConversionDef {
-  pub const fn new(cond: EnvCondition, dur: Duration, into: fn() -> ItemStacks) -> Self {
-    Self { cond, dur, into }
-  }
 }
 
 #[derive(Clone, PartialEq)]
@@ -79,16 +65,23 @@ impl From<&'static ConversionDef> for Conversion {
   fn from(value: &'static ConversionDef) -> Self { Self { def: value, progress: Duration::ZERO } }
 }
 
-#[derive(Clone)]
+#[derive(Clone, New)]
+#[new(const = true)]
 pub struct ItemDef {
   pub id: &'static str,
   pub volume: Volume,
   pub weight: Mass,
+  #[new(default = Phase::Solid)]
   pub phase: Phase,
+  #[new(default = Length::ZERO)]
   pub longest_side: Length,
+  #[new(default = &[])]
   pub pockets: &'static [PocketDef],
+  #[new(default = GatherStacks::None)]
   pub gather: GatherStacks,
+  #[new(default = &[])]
   pub uses: &'static [UseData],
+  #[new(default = &[])]
   pub conversions: &'static [ConversionDef],
 }
 
@@ -103,24 +96,10 @@ impl NameAndDesc for ItemDef {
 
   fn get_id(&self) -> Cow<'_, str> { self.id.into() }
 }
-impl ItemDef {
-  pub const fn new(id: &'static str, volume: Volume, weight: Mass) -> Self {
-    Self {
-      id,
-      volume,
-      weight,
-      phase: Phase::Solid,
-      longest_side: Length::ZERO,
-      pockets: &[],
-      gather: GatherStacks::None,
-      uses: &[],
-      conversions: &[],
-    }
-  }
-}
 
 impl ItemDef {
   builder_method! {
+    const;
     id: &'static str,
     volume: Volume,
     weight: Mass,
@@ -141,10 +120,13 @@ impl PartialEq for ItemDef {
 impl std::hash::Hash for ItemDef {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) { self.id.hash(state); }
 }
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, New)]
+#[new(const = true)]
 pub struct Item {
   pub def: &'static ItemDef,
+  #[new(default = vec![])]
   pub pockets: Vec<Pocket>,
+  #[new(default = vec![])]
   pub conv: Vec<Conversion>,
 }
 
@@ -155,20 +137,18 @@ const impl Mul<u64> for Item {
 }
 
 impl Item {
-  pub const fn new(def: &'static ItemDef) -> Self { Self { def, pockets: vec![], conv: vec![] } }
-
   // TODO: call this function, tick items
-  pub fn tick(&mut self, env: &EnvContext) -> ItemStacks {
+  pub fn tick(&mut self, env: BitFlags<EnvData>) -> Option<ItemStacks> {
     for Conversion { def, progress } in &mut self.conv {
       let ConversionDef { cond, dur, into } = def;
       if cond.matches(env) {
         *progress += 1.ms();
       }
       if *progress >= *dur {
-        return into();
+        return Some(into());
       }
     }
-    ItemStacks::new()
+    None
   }
 
   pub fn has_free_pockets(&self) -> bool {
@@ -190,23 +170,27 @@ impl Item {
         .fold(Volume::ZERO, |v, p| v + p)
   }
 
-  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) {
+  pub fn insert_stack_from(&mut self, stack: &mut ItemStack) -> u64 {
+    let mut count = 0u64;
     if !self.has_free_pockets() {
-      return;
+      return 0;
     }
     while let Some(pocket) = self.pockets.iter_mut().find(|p| p.holdable_count(stack) > 0) {
-      pocket.insert_stack_from(stack);
+      count += pocket.insert_stack_from(stack);
     }
+    count
   }
 
-  pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) {
+  pub fn insert_stacks_from(&mut self, stacks: &mut ItemStacks) -> u64 {
+    let mut count = 0u64;
     if !self.has_free_pockets() {
-      return;
+      return 0;
     }
     for stack in stacks.iter_mut() {
-      self.insert_stack_from(stack);
+      count += self.insert_stack_from(stack);
     }
     *stacks = std::mem::take(stacks).0.into_iter().filter(|stack| stack.count != 0).collect();
+    count
   }
 }
 impl<F: Fn(&Item) -> bool> TakeItems<F> for Item {

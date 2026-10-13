@@ -1,7 +1,10 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::item::ItemStacks;
+use derive_more::From;
+use inew::New;
 
+use crate::item::ItemStacks;
+#[derive_const(From)]
 pub struct ItemPile {
   pub stacks: ItemStacks,
 }
@@ -14,10 +17,8 @@ impl Deref for ItemPile {
 impl DerefMut for ItemPile {
   fn deref_mut(&mut self) -> &mut Self::Target { &mut self.stacks }
 }
-impl From<ItemStacks> for ItemPile {
-  fn from(stacks: ItemStacks) -> Self { Self { stacks } }
-}
-
+#[derive(Default, New)]
+#[new(const = true)]
 pub struct ItemPiles(pub Vec<ItemPile>);
 impl Deref for ItemPiles {
   type Target = Vec<ItemPile>;
@@ -42,11 +43,6 @@ where
     Self(iter.into_iter().map(ItemPile::from).collect())
   }
 }
-const impl Default for ItemPiles {
-  fn default() -> Self { Self::new() }
-}
 impl ItemPiles {
   pub fn iter(&self) -> impl Iterator<Item = &ItemPile> { self.0.iter() }
-
-  pub const fn new() -> Self { Self(Vec::new()) }
 }

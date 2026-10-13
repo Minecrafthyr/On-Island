@@ -13,7 +13,10 @@ use crossterm::{
   terminal::{Clear, ClearType::UntilNewLine},
 };
 
-use crate::io::{AVOID_MISTAKE_INPUT_DUR, ScreenWriter};
+use crate::{
+  builder_method,
+  io::{AVOID_MISTAKE_INPUT_DUR, ScreenWriter},
+};
 
 pub struct NumberRequester<
   'a,
@@ -33,22 +36,13 @@ impl<
   RangeT: RangeBounds<T>,
 > NumberRequester<'a, PromptT, T, RangeT>
 {
+  builder_method! {
+    range: Option<RangeT>,
+    check: Option<&'a dyn Fn(T) -> Option<String>>,
+    default: Option<T>
+  }
+
   pub fn new(prompt: PromptT) -> Self { Self { prompt, range: None, check: None, default: None } }
-
-  pub fn range(mut self, range: RangeT) -> Self {
-    self.range = Some(range);
-    self
-  }
-
-  pub fn check(mut self, check: &'a dyn Fn(T) -> Option<String>) -> Self {
-    self.check = Some(check);
-    self
-  }
-
-  pub fn default(mut self, default: T) -> Self {
-    self.default = Some(default);
-    self
-  }
 
   pub fn request(self) -> Option<T>
   where
@@ -61,13 +55,13 @@ impl<
       _ = match r.start_bound() {
       Bound::Included(v) => write!(p, "[{}", v),
       Bound::Excluded(v) => write!(p, "({}", v),
-      Bound::Unbounded => p.write_str("(-∞"),
+      Bound::Unbounded => write!(p, "(-∞"),
       };
       _ = p.write_str(", ");
       _ = match r.end_bound() {
       Bound::Included(v) => write!(p, "{}]", v),
       Bound::Excluded(v) => write!(p, "{})", v),
-      Bound::Unbounded => p.write_str("+∞)"),
+      Bound::Unbounded => write!(p, "+∞)"),
       };
     }
     write!(p, "：").unwrap();
@@ -137,8 +131,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, Ent
   fn draw_entries(&mut self, s: &mut ScreenWriter) {
     for (i, DataItem { text, selected, .. }) in self.data.iter_mut().enumerate() {
       if i == self.selecting {
-        write!(s, "{}", (selected)(text).as_ref().attribute(Bold)).unwrap();
-        s.endl();
+        s.writeln((selected)(text).as_ref().attribute(Bold));
       } else {
         s.writeln(text.as_ref());
       }

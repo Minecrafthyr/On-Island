@@ -1,9 +1,10 @@
 use std::{error::Error, fmt::Display, sync::Arc};
 
+use inew::New;
 use itertools::Itertools;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 
-use crate::utils::{CountOf, TakeItems};
+use crate::utils::{IterStack, TakeItems};
 pub use crate::{
   damage::Damage,
   item::{CANVAS_BACKPACK, COTTON_PANTIES, COTTON_UNDERWEAR, Item, ItemStack, ItemStacks},
@@ -33,18 +34,25 @@ pub enum Effect {
   WaterConsumeMul(f64),
   HealthRegenMul(f64),
 }
-
+#[derive(New)]
 pub struct Player {
+  #[new(default = 1.0)]
   pub health: f64,
+  #[new(default = 72.h())]
   pub energy: Duration,
+  #[new(default = 72.h())]
   pub water: Duration,
+  #[new(default = Location::StrandedShip)]
   pub location: Location,
+  #[new(default)]
   pub actions: Vec<Action>,
+  #[new(default)]
   pub used_body_parts: Vec<(&'static BodyPart, IsExclusive)>,
+  #[new(default)]
   pub effects: Vec<Effect>,
+  #[new(default = vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()])]
   pub worn: Vec<Item>,
 }
-
 impl Default for Player {
   fn default() -> Self { Self::new() }
 }
@@ -69,11 +77,12 @@ impl From<String> for Endgame {
 }
 impl Display for Endgame {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    if let Some(dmg) = self.damage {
-      write!(f, "{}", t!("game.over_message", message = dmg.death_message()))
-    } else {
-      write!(f, "{}", t!("game.over"))
-    }?;
+    f.write_str(
+      &self
+        .damage
+        .map(|d| t!("game.over_message", message = d.death_message()))
+        .unwrap_or(t!("game.over")),
+    )?;
     if let Some(ref msg) = self.message {
       write!(f, "\n{msg}")?
     }
@@ -82,19 +91,6 @@ impl Display for Endgame {
 }
 impl Error for Endgame {}
 impl Player {
-  pub fn new() -> Self {
-    Player {
-      health: 1.0,
-      energy: 72.h(),
-      water: 72.h(),
-      location: Location::StrandedShip,
-      actions: vec![],
-      used_body_parts: vec![],
-      effects: vec![],
-      worn: vec![CANVAS_BACKPACK.into(), COTTON_PANTIES.into(), COTTON_UNDERWEAR.into()],
-    }
-  }
-
   pub fn get_efficiency(&self) -> f64 {
     let mut base = 1.0;
     if self.energy < 24.h() {
@@ -203,18 +199,11 @@ impl Player {
 
     Some((Duration::from_s_f64(time_seconds), activity))
   }
-
-  pub fn get_inventory(&self) -> impl Iterator<Item = &ItemStack> {
+}
+impl IterStack for Player {
+  fn iter_stack(&self) -> impl Iterator<Item = &ItemStack> {
     self.worn.iter().flat_map(|i| &i.pockets).flat_map(|p| p.stacks.iter())
   }
-}
-impl<F: Fn(&Item) -> bool> CountOf<F> for Player {
-  fn count_of(&self, f: F) -> u64 {
-    self.get_inventory().filter(|ei| f(&ei.item)).map(|stack| stack.count).sum()
-  }
-}
-impl CountOf<&Item> for Player {
-  fn count_of(&self, item: &Item) -> u64 { self.count_of(|ei: &Item| ei == item) }
 }
 impl<F: Fn(&Item) -> bool> TakeItems<F> for Player {
   fn take_items(&mut self, f: F, mut count: u64) -> (ItemStacks, u64) {

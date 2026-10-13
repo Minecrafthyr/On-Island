@@ -31,7 +31,7 @@ impl ScreenWriter {
   }
 
   pub fn write(&mut self, s: impl Display) -> &mut Self {
-    write!(self.out, "{s}").unwrap();
+    queue!(self.out, Print(s)).unwrap();
     self
   }
 

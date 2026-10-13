@@ -1,3 +1,5 @@
+use inew::New;
+
 use super::*;
 #[derive(
   Debug, Clone, EnumCount, EnumIter, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr,
@@ -16,16 +18,12 @@ impl Error for PushActionError {}
 impl Display for PushActionError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
 }
+#[derive(New)]
 pub struct ActionContent {
   pub body_parts: Vec<(&'static BodyPart, IsExclusive)>,
   pub effects: Vec<Effect>,
 }
 
-impl ActionContent {
-  pub fn new(body_parts: Vec<(&'static BodyPart, IsExclusive)>, effects: Vec<Effect>) -> Self {
-    Self { body_parts, effects }
-  }
-}
 #[derive(Clone)]
 pub struct Action {
   pub id: &'static str,

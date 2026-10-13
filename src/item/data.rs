@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use rand::random_range;
 
 use super::*;
-use crate::env::EnvCondition;
+use crate::location::EnvCondition;
 
 macro_rules! defines {
   (
@@ -69,7 +69,7 @@ defines! {
     batch: (2, 0.0),
     activity: 1.01,
     on_use: |player| {
-      player.water += 30.s();
+      player.water -= 20.s();
       todo!("salt")
     },
   }]),
@@ -77,7 +77,7 @@ defines! {
     &[PocketDef::new("plastic_bottle.main", 500.mL(), 900.g(), true).can_store_liquid()]
   ),
   "living_fish": new(1.L(), 1200.g()).gather(
-    GatherStacks::Single(|_rd| [RAW_FISH * 1].into())
+    GatherStacks::Single(|_rd| [RAW_FISH * 1].into_iter().collect())
   ).uses(&[UseData {
     usage: "eat",
     dur: 135.s(),
@@ -89,7 +89,7 @@ defines! {
     }}]
   ).conversions(&[ConversionDef::new(EnvCondition::AlwaysTrue, 10.mnt(), || ItemStacks(vec![RAW_FISH.item() * 1]))]),
   "raw_fish": new(1.L(), 1200.g()).gather(
-    GatherStacks::Single(|_rd| [RAW_FISH * 1].into())
+    GatherStacks::Single(|_rd| [RAW_FISH * 1].into_iter().collect())
   ).uses(&[UseData {
     usage: "eat",
     dur: 115.s(),
@@ -113,22 +113,27 @@ defines! {
   "tree": new(150.L(), 100.kg()).gather(
     GatherStacks::Single(|_rd| [
       WOOD * 2,
-      STICK * random_range(0..2),
-      TREE_STICK * random_range(40..60),
+      BIG_BRANCH * random_range(1..2),
+      BRANCH * random_range(30..60),
+      STICK * random_range(0..4),
       LEAF * random_range(10..200)
-    ].into())
+   ] .into_iter().collect())
   ),
   "wood": new(50.L(), 20.kg()),
+  "small_branch": new(600.mL(), 400.g()),
+  "short_stick": new(500.mL(), 250.g()),
+  "branch": new(1300.mL(), 1.kg()),
   "stick": new(1.L(), 800.g()),
-  "tree_stick": new(1300.mL(), 1.kg()),
+  "big_branch": new(2500.mL(), 1500.g()),
+  "long_stick": new(2.L(), 1.kg()),
   "leaf": new(40.mL(), 10.g()),
   "tree_vine": new(500.mL(), 300.g()).gather(
-    GatherStacks::Single(|_rd| [TREE_VINE * 1].into())
+    GatherStacks::Single(|_rd| [TREE_VINE * 1].into_iter().collect())
   ),
   "dry_tree_vine": new(400.mL(), 200.g()),
-  "big_rock": new(150.L(), 100.kg()),
   "flint": new(700.mL(), 800.g()),
   "rock": new(800.mL(), 1.kg()),
+  "big_rock": new(150.L(), 100.kg()),
   "vine_backpack": new(25.L(), 900.g()).pockets(
     &[PocketDef::new("vine_backpack.main", 18.L(), 10.kg(), false)]
   ),

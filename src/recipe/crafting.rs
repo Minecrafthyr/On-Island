@@ -1,3 +1,4 @@
+use inew::New;
 use itertools::Itertools;
 
 use super::*;
@@ -38,13 +39,22 @@ pub const CRAFTING_RECIPES: &[Crafting] = &[
   )]),
 ];
 
-#[derive(Clone)]
+#[derive(Clone, New)]
+#[new(const = true)]
 pub struct Crafting {
   pub id: &'static str,
+  #[new(default = None)]
   pub custom_name: Option<&'static str>,
   pub batch: (usize, f64),
   pub steps: &'static [Step],
 }
+impl Crafting {
+  builder_method! {
+    const;
+    custom_name: Option<&'static str>
+  }
+}
+
 #[derive(Clone)]
 pub struct Step {
   pub custom_name: Option<&'static str>,
@@ -106,12 +116,5 @@ impl NameAndDesc for Crafting {
       );
     }
     r.into()
-  }
-}
-impl Crafting {
-  builder_method! {custom_name: Option<&'static str>}
-
-  pub const fn new(id: &'static str, batch: (usize, f64), steps: &'static [Step]) -> Self {
-    Self { id, custom_name: None, batch, steps }
   }
 }

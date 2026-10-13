@@ -51,6 +51,7 @@ const impl From<ItemDefStack> for Req {
 }
 impl Req {
   builder_method! {
+    const;
     count: u64,
     consume: ConsumeType
   }

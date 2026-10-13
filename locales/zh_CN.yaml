@@ -2,15 +2,15 @@ item:
   berry:
     name: 浆果
     description: 可以吃的浆果。
+  small_branch:
+    name: 小树枝
+    description: 长15厘米的树枝尖端。
   branch:
     name: 树枝
     description: 长30厘米的树枝。
   big_branch:
     name: 大树枝
     description: 长70厘米的粗大树枝。
-  small_branch:
-    name: 小树枝
-    description: 长15厘米的树枝尖端。
   short_stick:
     name: 短木棍
     description: 长约16厘米的脆弱木棍。
@@ -35,6 +35,9 @@ item:
   water:
     name: 水
     description: 清凉的水，可以饮用。
+  sea_water:
+    name: 海水
+    description: 盐分对于人类来说过多的海水，喝下它会越来越渴。
   raw_fish:
     name: 鱼
     description: 新鲜的鱼，可以吃。饱含水分与能量。

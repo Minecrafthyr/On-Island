@@ -12,8 +12,7 @@
   // const_heap,
   // const_closures
 )]
-#![allow(incomplete_features, clippy::missing_transmute_annotations)]
-
+#![allow(incomplete_features, clippy::missing_transmute_annotations, confusable_idents)]
 use std::{io::stdout, thread::sleep};
 
 use crossterm::{

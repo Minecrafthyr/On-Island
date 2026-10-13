@@ -166,21 +166,24 @@ const M: u64 = K * 1000;
 const G: u64 = M * 1000;
 const T: u64 = G * 1000;
 
+// WARNING: `VAL_ΜL` and `VAL_ML` look alike
 unit! {
   pub struct Volume(u64);
-  nL: 1, uL: K, mm3: K, mL: M, cm3: M, L: G, dm3: G, m3: T
+  nL: 1, uL: K, μL: K, mm3: K, mL: M, cm3: M, L: G, dm3: G, m3: T
 }
 unit! {
   pub struct Mass(u64);
-  ug: 1, mg: K, g: M, kg: G
+  ug: 1, μg:1, mg: K, g: M, kg: G
 }
+// WARNING: `VAL_ΜM` and `VAL_MM` look alike
 unit! {
   pub struct Length(u64);
-  um: 1, mm: K, cm: M, m: M*100, km: G*100
+  um: 1, μm: 1, mm: K, cm: M, m: M*100, km: G*100
 }
+// WARNING: `VAL_ΜS` and `VAL_MS` look alike
 unit! {
   pub struct Duration(i64);
-  us: 1, ms: 1000, s: 1000*1000, mnt: 1000*1000*60, h: 1000i64*1000*60*60, day: 1000i64*1000*60*60*24, week: 1000i64*1000*60*60*24*7
+  us: 1, μs: 1, ms: 1000, s: 1000*1000, mnt: 1000*1000*60, h: 1000i64*1000*60*60, day: 1000i64*1000*60*60*24, week: 1000i64*1000*60*60*24*7
 }
 impl Duration {
   pub fn from_s_f64(secs: f64) -> Self {
@@ -230,7 +233,7 @@ impl std::fmt::Display for Volume {
         (Volume::FACTOR_M3, "m3"),
         (Volume::FACTOR_L, "L"),
         (Volume::FACTOR_ML, "mL"),
-        (Volume::FACTOR_UL, "uL"),
+        (Volume::FACTOR_ΜL, "μL"),
         (Volume::FACTOR_UL, "nL"),
       ],
       "unit.vol",
@@ -247,7 +250,7 @@ impl std::fmt::Display for Mass {
         (Mass::FACTOR_KG, "kg"),
         (Mass::FACTOR_G, "g"),
         (Mass::FACTOR_MG, "mg"),
-        (Mass::FACTOR_UG, "ug"),
+        (Mass::FACTOR_ΜG, "μg"),
       ],
       "unit.mass",
     )
@@ -263,7 +266,7 @@ impl std::fmt::Display for Length {
         (Length::FACTOR_KM, "km"),
         (Length::FACTOR_M, "m"),
         (Length::FACTOR_CM, "cm"),
-        (Length::FACTOR_MM, "mm"),
+        (Length::FACTOR_ΜM, "μm"),
         (Length::FACTOR_UM, "um"),
       ],
       "unit.len",
@@ -277,19 +280,18 @@ impl std::fmt::Display for Duration {
     if ns == 0 {
       return write!(f, "0{}", t!("unit.dur.ns"));
     }
-    let abs = ns.unsigned_abs();
+    let abs = ns.abs();
     if ns < 0 {
       write!(f, "-")?;
     }
     // Pick the largest unit that fits, then print a decimal fraction
     for (scale, suffix) in [
-      (86_400_000_000_000, "d"),
-      (3_600_000_000_000, "h"),
-      (60_000_000_000, "m"),
-      (1_000_000_000, "s"),
-      (1_000_000, "ms"),
-      (1_000, "µs"),
-      (1, "ns"),
+      (Duration::FACTOR_DAY, "d"),
+      (Duration::FACTOR_H, "h"),
+      (Duration::FACTOR_MNT, "m"),
+      (Duration::FACTOR_S, "s"),
+      (Duration::FACTOR_MS, "ms"),
+      (Duration::FACTOR_ΜS, "µs"),
     ] {
       if abs >= scale {
         let whole = abs / scale;

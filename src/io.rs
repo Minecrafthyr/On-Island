@@ -42,7 +42,10 @@ impl ScreenWriter {
 
   pub fn writeln(&mut self, s: impl Display) -> &mut Self { self.write(s).endl() }
 
-  pub fn flush(&mut self) { self.out.flush().unwrap() }
+  pub fn flush(&mut self) -> &mut Self {
+    self.out.flush().unwrap();
+    self
+  }
 
   pub fn end(&mut self) {
     queue!(self.out, Clear(FromCursorDown)).unwrap();

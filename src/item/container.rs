@@ -1,52 +1,29 @@
-use inew::New;
-
 use super::*;
-use crate::{builder_method, utils::TakeItems};
+use crate::utils::TakeItems;
 
 pub struct CloseData {}
-#[derive(New)]
-#[new(const = true)]
 pub struct PocketDef {
   pub id: &'static str,
   pub capacity: Volume,
   pub max_weight: Mass,
   pub rigid: bool,
-  #[new(default = false)]
-  pub can_store_liquid: bool,
-  #[new(default = false)]
-  pub can_store_gas: bool,
-  #[new(default = None)]
-  pub specify_items: Option<fn(&Item) -> bool>,
+  pub can_store_liquid: bool= false,
+  pub can_store_gas: bool= false,
+  pub specify_items: Option<fn(&Item) -> bool>= None,
 }
 
 impl PartialEq for PocketDef {
   fn eq(&self, other: &Self) -> bool { self.id == other.id }
 }
 impl Eq for PocketDef {}
-impl PocketDef {
-  builder_method! {
-    const;
-    specify_items: Option<fn(&Item) -> bool>
-  }
-
-  pub const fn can_store_liquid(mut self) -> Self {
-    self.can_store_liquid = true;
-    self
-  }
-
-  pub const fn can_store_gas(mut self) -> Self {
-    self.can_store_gas = true;
-    self
-  }
-}
 #[derive(Clone)]
 pub struct Pocket {
   pub def: &'static PocketDef,
-  pub stacks: ItemStacks,
-  pub volume_used: Volume,
-  pub weight: Mass,
-  pub priority: i32,
-  pub closed: bool,
+  pub stacks: ItemStacks = ItemStacks::new(),
+  pub volume_used: Volume =  Volume::ZERO,
+  pub weight: Mass = Mass::ZERO,
+  pub priority: i32 = 0,
+  pub closed: bool = true,
 }
 
 impl PartialEq for Pocket {
@@ -58,16 +35,7 @@ impl Deref for Pocket {
   fn deref(&self) -> &Self::Target { self.def }
 }
 impl From<&'static PocketDef> for Pocket {
-  fn from(value: &'static PocketDef) -> Self {
-    Self {
-      def: value,
-      stacks: ItemStacks::new(),
-      volume_used: Volume::ZERO,
-      weight: Mass::ZERO,
-      priority: 0,
-      closed: true,
-    }
-  }
+  fn from(value: &'static PocketDef) -> Self { Self { def: value, .. } }
 }
 impl Pocket {
   pub fn recalc_volume_and_size(&mut self) {

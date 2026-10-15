@@ -67,36 +67,6 @@ macro_rules! unit {
       })+
     }
     }
-
-    impl std::str::FromStr for $Type {
-      type Err = String;
-
-      fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut result = <$Type>::default();
-        let mut last_idx = 0;
-        let mut value_buf: Option<$int> = None;
-        for (i, c) in s.chars().enumerate() {
-          match c {
-            '0'..='9' => {}
-            ' ' | 'a'..='z' | 'A'..='Z' if value_buf.is_none() => {
-              value_buf = Some(
-                s[last_idx..i].parse().map_err(|e: std::num::ParseIntError| e.to_string())?,
-              );
-              last_idx = i;
-            }
-            ' ' if let Some(value) = value_buf => {
-              result += Self::from_value_and_str(value, &s[last_idx..i])?;
-              value_buf = None;
-            }
-            _ => return Err("Invalid char".to_string()),
-          }
-        }
-        if let Some(value) = value_buf {
-          result += Self::from_value_and_str(value, &s[last_idx..])?;
-        }
-        Ok(result)
-      }
-    }
     impl Add for $Type {
       type Output = Self;
 
@@ -267,7 +237,6 @@ impl std::fmt::Display for Length {
         (Length::FACTOR_M, "m"),
         (Length::FACTOR_CM, "cm"),
         (Length::FACTOR_ΜM, "μm"),
-        (Length::FACTOR_UM, "um"),
       ],
       "unit.len",
     )
@@ -284,7 +253,6 @@ impl std::fmt::Display for Duration {
     if ns < 0 {
       write!(f, "-")?;
     }
-    // Pick the largest unit that fits, then print a decimal fraction
     for (scale, suffix) in [
       (Duration::FACTOR_DAY, "d"),
       (Duration::FACTOR_H, "h"),
@@ -299,7 +267,6 @@ impl std::fmt::Display for Duration {
         if rem == 0 {
           return write!(f, "{}{}", whole, t!(format!("unit.dur.{suffix}")));
         }
-        // Print fractional part, trimming trailing zeros
         let frac_digits = scale.to_string().len() as u32 - 1;
         let frac = format!("{:0width$}", rem, width = frac_digits as usize);
         let frac = frac.trim_end_matches('0');
@@ -309,3 +276,91 @@ impl std::fmt::Display for Duration {
     unreachable!()
   }
 }
+
+fn parse_units<A, T, F, G>(s: &str, mut acc: A, parse_num: F, apply: G) -> Result<A, String>
+where
+  T: Copy,
+  F: Fn(&str) -> Result<T, String>,
+  G: Fn(A, T, &str) -> Result<A, String>,
+{
+  let bytes = s.as_bytes();
+  let len = bytes.len();
+  let mut i = 0usize;
+
+  while i < len {
+    while i < len && bytes[i].is_ascii_whitespace() {
+      i += 1;
+    }
+    if i >= len {
+      break;
+    }
+
+    let num_start = i;
+    if bytes[i] == b'-' || bytes[i] == b'+' {
+      i += 1;
+    }
+    let digits_start = i;
+    while i < len && bytes[i].is_ascii_digit() {
+      i += 1;
+    }
+    if i == digits_start {
+      return Err(format!("Expected number at position {num_start}"));
+    }
+    let num_text = &s[num_start..i];
+    let value = parse_num(num_text)?;
+
+    while i < len && bytes[i].is_ascii_whitespace() {
+      i += 1;
+    }
+
+    let unit_start = i;
+    while i < len
+      && !bytes[i].is_ascii_whitespace()
+      && !bytes[i].is_ascii_digit()
+      && bytes[i] != b'-'
+      && bytes[i] != b'+'
+    {
+      i += 1;
+    }
+    if i == unit_start {
+      return Err(format!("Expected unit at position {unit_start}"));
+    }
+    let unit = &s[unit_start..i];
+
+    acc = apply(acc, value, unit)?;
+  }
+
+  Ok(acc)
+}
+impl std::str::FromStr for Duration {
+  type Err = String;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    parse_units(
+      s,
+      Duration::default(),
+      |t| t.parse::<i64>().map_err(|e| e.to_string()),
+      |acc, value, unit| Ok(acc + Duration::from_value_and_str(value, unit)?),
+    )
+  }
+}
+macro_rules! impl_from_str_unsigned {
+  ($Type:ty) => {
+    impl std::str::FromStr for $Type {
+      type Err = String;
+
+      fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_units(
+          s,
+          <$Type>::default(),
+          |t| t.parse::<u64>().map_err(|e| e.to_string()),
+          |acc, value, unit| Ok(acc + <$Type>::from_value_and_str(value, unit)?),
+        )
+      }
+    }
+  };
+}
+
+impl_from_str_unsigned!(Volume);
+impl_from_str_unsigned!(Mass);
+impl_from_str_unsigned!(Length);

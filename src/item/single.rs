@@ -5,7 +5,6 @@ use inew::New;
 
 use super::*;
 use crate::{
-  builder_method,
   item::container::{Pocket, PocketDef},
   location::{EnvCondition, EnvData, ResData},
   player::Player,
@@ -64,25 +63,25 @@ pub struct Conversion {
 impl From<&'static ConversionDef> for Conversion {
   fn from(value: &'static ConversionDef) -> Self { Self { def: value, progress: Duration::ZERO } }
 }
+// #[derive(PartialEq, New)]
+// #[new(const = true)]
+// pub struct CreatureDef {}
 
-#[derive(Clone, New)]
-#[new(const = true)]
+// pub struct Creature {
+//   def: &'static CreatureDef,
+// }
+
+#[derive(Clone)]
 pub struct ItemDef {
   pub id: &'static str,
   pub volume: Volume,
   pub weight: Mass,
-  #[new(default = Phase::Solid)]
-  pub phase: Phase,
-  #[new(default = Length::ZERO)]
-  pub longest_side: Length,
-  #[new(default = &[])]
-  pub pockets: &'static [PocketDef],
-  #[new(default = GatherStacks::None)]
-  pub gather: GatherStacks,
-  #[new(default = &[])]
-  pub uses: &'static [UseData],
-  #[new(default = &[])]
-  pub conversions: &'static [ConversionDef],
+  pub phase: Phase = Phase::Solid,
+  pub longest_side: Length = Length::ZERO,
+  pub pockets: &'static [PocketDef] = &[] as &'static [PocketDef],
+  pub gather: GatherStacks= GatherStacks::None,
+  pub uses: &'static [UseData] = &[] as &'static [UseData],
+  pub conversions: &'static [ConversionDef] = &[] as &'static [ConversionDef],
 }
 
 const impl Mul<u64> for &'static ItemDef {
@@ -98,21 +97,7 @@ impl NameAndDesc for ItemDef {
 }
 
 impl ItemDef {
-  builder_method! {
-    const;
-    id: &'static str,
-    volume: Volume,
-    weight: Mass,
-    phase: Phase,
-    gather: GatherStacks,
-    uses: &'static [UseData],
-    pockets: &'static [PocketDef],
-    conversions: &'static [ConversionDef]
-  }
-
   pub fn item(&'static self) -> Item { Item::from(self) }
-
-  pub const fn with_id(id: &'static str) -> Self { Self::new(id, Volume::ZERO, Mass::ZERO) }
 }
 impl PartialEq for ItemDef {
   fn eq(&self, other: &Self) -> bool { self.id == other.id }
@@ -137,7 +122,7 @@ const impl Mul<u64> for Item {
 }
 
 impl Item {
-  // TODO: call this function, tick items
+  // TODO: improve tick items
   pub fn tick(&mut self, env: BitFlags<EnvData>) -> Option<ItemStacks> {
     for Conversion { def, progress } in &mut self.conv {
       let ConversionDef { cond, dur, into } = def;

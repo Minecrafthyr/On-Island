@@ -38,6 +38,7 @@ impl Index<usize> for ItemStacks {
 
   fn index(&self, index: usize) -> &Self::Output { &self.0[index] }
 }
+
 impl IndexMut<usize> for ItemStacks {
   fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut self.0[index] }
 }

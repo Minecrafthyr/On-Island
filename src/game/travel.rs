@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
   game::Game,
   io::ScreenWriter,
@@ -36,11 +38,12 @@ impl Game {
     };
 
     let (new_location, travel_time, _) = options[choice];
-    match self.player_action(Action::no_progress(
-      "travel",
-      move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)]),
-      travel_time,
-    )) {
+    match self.player_action(Action {
+      id: "travel",
+      f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)])),
+      total_dur: travel_time,
+      ..
+    }) {
     Ok(()) => {
       self.player.location = new_location;
     }

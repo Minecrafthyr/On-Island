@@ -6,7 +6,7 @@ use inew::New;
 use super::*;
 use crate::{
   item::container::{Pocket, PocketDef},
-  location::{EnvCondition, EnvData, ResData},
+  location::{EnvCondition, EnvData},
   player::Player,
   utils::{NameAndDesc, TakeItems},
 };
@@ -30,22 +30,15 @@ pub enum Phase {
   Liquid,
   Gas,
 }
-type SingleResFn = fn(&mut ResData) -> ItemStacks;
-type MultipleResFn = fn(&mut ResData, u64) -> ItemStacks;
+type SingleResFn = fn() -> ItemStacks;
+type MultipleResFn = fn(u64) -> ItemStacks;
 /// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
-pub enum GatherStacks {
+pub enum Gather {
   None,
-  Single(SingleResFn),
-  Multiple(MultipleResFn),
+  Single { time: Duration, activity: f64, f: SingleResFn },
+  Multiple { time: Duration, activity: f64, f: MultipleResFn },
 }
-impl From<SingleResFn> for GatherStacks {
-  fn from(value: SingleResFn) -> Self { Self::Single(value) }
-}
-impl From<MultipleResFn> for GatherStacks {
-  fn from(value: MultipleResFn) -> Self { Self::Multiple(value) }
-}
-
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(PartialEq, New)]
 #[new(const = true)]
@@ -63,13 +56,6 @@ pub struct Conversion {
 impl From<&'static ConversionDef> for Conversion {
   fn from(value: &'static ConversionDef) -> Self { Self { def: value, progress: Duration::ZERO } }
 }
-// #[derive(PartialEq, New)]
-// #[new(const = true)]
-// pub struct CreatureDef {}
-
-// pub struct Creature {
-//   def: &'static CreatureDef,
-// }
 
 #[derive(Clone)]
 pub struct ItemDef {
@@ -79,7 +65,7 @@ pub struct ItemDef {
   pub phase: Phase = Phase::Solid,
   pub longest_side: Length = Length::ZERO,
   pub pockets: &'static [PocketDef] = &[] as &'static [PocketDef],
-  pub gather: GatherStacks= GatherStacks::None,
+  pub gather: Gather = Gather::None,
   pub uses: &'static [UseData] = &[] as &'static [UseData],
   pub conversions: &'static [ConversionDef] = &[] as &'static [ConversionDef],
 }

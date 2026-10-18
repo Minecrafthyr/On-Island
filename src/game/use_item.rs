@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use itertools::Itertools;
 
 use crate::{
@@ -79,11 +81,14 @@ impl Game {
       return;
     };
     for _ in 0..count {
-      match self.player_action(Action::no_progress(
-        "use_item",
-        move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(use_data.activity)]),
-        use_data.dur,
-      )) {
+      match self.player_action(Action {
+        id: "use_item",
+        f: Arc::new(move |_| {
+          ActionContent::new(vec![], vec![Effect::ActivityMul(use_data.activity)])
+        }),
+        total_dur: use_data.dur,
+        ..
+      }) {
       Ok(()) => {
         let (_removed, mismatch) = self.player.take_items(|i: &Item| i == item, 1);
         if mismatch == 0 {

@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, sync::Arc};
 
 use crossterm::event::{Event, KeyCode, KeyEvent, read};
 use rand::rngs::ThreadRng;
@@ -167,11 +167,12 @@ impl Game {
     else {
       return Ok(());
     };
-    match self.player_action(Action::no_progress(
-      "rest",
-      |_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)]),
-      Duration::s(sec),
-    )) {
+    match self.player_action(Action {
+      id: "rest",
+      f: Arc::new(|_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)])),
+      progress: Duration::ZERO,
+      total_dur: Duration::s(sec),
+    }) {
     Ok(()) => {}
     Err(not_ok) => {
       s.message(not_ok.to_string());

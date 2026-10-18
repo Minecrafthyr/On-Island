@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
   game::Game,
   io::ScreenWriter,
@@ -67,11 +69,12 @@ impl Game {
         s.message(t!("action.pickup.remaining", count = count - i));
         return;
       };
-      match self.player_action(Action::no_progress(
-        "gather",
-        move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-        pick_time,
-      )) {
+      match self.player_action(Action {
+        id: "gather",
+        f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+        total_dur: pick_time,
+        ..
+      }) {
       Ok(()) => {
         if let Some(_left) = self.player.insert_stack(item.clone() * 1) {
           s.message(t!("action.pickup.remaining", count = count - i));

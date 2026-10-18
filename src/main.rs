@@ -7,7 +7,6 @@
   const_precise_live_drops,
   const_ops,
   default_field_values,
-  
   // transmute_neo
   // mut_restriction,
   // const_array,
@@ -32,6 +31,7 @@ pub mod game;
 pub mod recipe;
 // pub mod i18n;
 // pub mod env;
+pub mod creature;
 pub mod io;
 pub mod item;
 pub mod location;

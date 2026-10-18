@@ -1,9 +1,8 @@
-use rand::RngExt;
+use std::sync::Arc;
 
 use crate::{
-  game::{Duration, Game, ToDuration},
+  game::Game,
   io::ScreenWriter,
-  location::ResData,
   player::{
     Effect,
     action::{Action, ActionContent},
@@ -19,7 +18,7 @@ impl Game {
       DisplayList::new(
         Some(t!("action.gather.title")),
         loc
-          .res
+          .gather_stacks
           .iter()
           .map(|item_stack| DataItem {
             text: t!(
@@ -37,10 +36,10 @@ impl Game {
     ) else {
       return;
     };
-    let ResData { item, gather_time, activity, .. } = loc.res[choice].clone();
+    let item_stack = loc.gather_stacks[choice].clone();
 
     let Some(count) = NumberRequester::new(t!("action.gather.how_many"))
-      .range(1..=loc.gather_stacks[&loc.res[choice].item].count)
+      .range(1..=item_stack.count)
       .default(1)
       .request()
     else {
@@ -48,22 +47,21 @@ impl Game {
     };
 
     loop {
-      use crate::item::GatherStacks::*;
-      match item.gather {
+      use crate::item::Gather::*;
+      match item_stack.item.gather {
       None => return,
-      Single(f) =>
+      Single { time, activity, f } =>
         for _ in 0..count {
-          let (b, e) = gather_time.clone().into_inner();
-          let t = self.rng.random_range(b.as_us()..=e.as_us());
-          match self.player_action(Action::no_progress(
-            "gather",
-            move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-            t.us(),
-          )) {
+          match self.player_action(Action {
+            id: "gather",
+            f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+            total_dur: time,
+            ..
+          }) {
           Ok(()) => {
             let loc = &mut self.locations[self.player.location];
-            self.player.insert_stacks(f(&mut loc.res[choice]));
-            loc.gather_stacks[&loc.res[choice].item].count -= 1;
+            self.player.insert_stacks(f());
+            loc.gather_stacks[choice].count -= 1;
           }
           Err(not_ok) => {
             s.message(not_ok.to_string());
@@ -71,18 +69,17 @@ impl Game {
           }
           }
         },
-      Multiple(f) => {
-        let (b, e) = gather_time.clone().into_inner();
-        let t = self.rng.random_range(b.as_us()..=e.as_us());
-        match self.player_action(Action::no_progress(
-          "gather",
-          move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)]),
-          Duration::us(t),
-        )) {
+      Multiple { time, activity, f } => {
+        match self.player_action(Action {
+          id: "gather",
+          f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+          total_dur: time,
+          ..
+        }) {
         Ok(()) => {
           let loc = &mut self.locations[self.player.location];
-          self.player.insert_stacks(f(&mut loc.res[choice], count));
-          loc.gather_stacks[&loc.res[choice].item].count -= 1;
+          self.player.insert_stacks(f(count));
+          loc.gather_stacks[choice].count -= 1;
         }
         Err(not_ok) => {
           s.message(not_ok.to_string());

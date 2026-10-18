@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use itertools::Itertools;
 
 use crate::{
@@ -67,11 +69,12 @@ impl Game {
     for _ in 0..batch_count {
       // TODO: resume and one by one taking recipe req :)
       for rs in recipe.steps.iter() {
-        match self.player_action(Action::no_progress(
-          "crafting",
-          |_| ActionContent::new(vec![], vec![Effect::ActivityMul(rs.activity)]),
-          rs.time,
-        )) {
+        match self.player_action(Action {
+          id: "crafting",
+          f: Arc::new(|_| ActionContent::new(vec![], vec![Effect::ActivityMul(rs.activity)])),
+          total_dur: rs.time,
+          ..
+        }) {
         Ok(()) =>
           if !self.apply_recipe_step(rs) {
             s.message(t!("action.crafting.apply_failed", recipe = recipe.name()));

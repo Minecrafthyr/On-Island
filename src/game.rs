@@ -11,7 +11,7 @@ use crate::{
   location::{EnvData, Locations},
   player::{
     Effect, Endgame, Player,
-    action::{Action, ActionContent},
+    action::{Action, ActionContent, PushActionError},
   },
   ui::NumberRequester,
 };
@@ -87,6 +87,13 @@ impl Error for WaitActionError {}
 impl Display for WaitActionError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
 }
+#[derive(thiserror::Error, Debug)]
+pub enum ActionError {
+  #[error("Push action failed: {0}")]
+  Push(#[from] PushActionError),
+  #[error("Wait action failed: {0}")]
+  Wait(#[from] WaitActionError),
+}
 impl Game {
   pub fn wait_player_action(&mut self, id: &'static str) -> Result<(), WaitActionError> {
     while let Some(_) = self.player.actions.iter().find(|a| a.id == id) {
@@ -98,7 +105,7 @@ impl Game {
     Ok(())
   }
 
-  pub fn player_action(&mut self, action: Action) -> Result<(), Box<dyn Error>> {
+  pub fn player_action(&mut self, action: Action) -> Result<(), ActionError> {
     let id = action.id;
     self.player.try_push_action(action)?;
     self.wait_player_action(id)?;
@@ -115,41 +122,42 @@ impl Game {
     Ok(())
   }
 
-  fn render(&mut self) {
+  fn render(&mut self) -> Result<(), std::io::Error> {
     ScreenWriter::new_screen()
-      .writeln(t!("game.title"))
-      .endl()
+      .writeln(t!("game.title"))?
+      .endl()?
       .writeln(t!(
         "game.stats",
         name = t!("attribute.health.name"),
         value = format!("{:.2}%", self.player.health)
-      ))
-      .writeln(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy))
-      .writeln(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water))
-      .writeln(t!("game.status_line", location = self.player.location.name()))
-      .end();
+      ))?
+      .writeln(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy))?
+      .writeln(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water))?
+      .writeln(t!("game.status_line", location = self.player.location.name()))?
+      .end()?;
+    Ok(())
   }
 
   pub fn run(&mut self) -> Result<!, Box<dyn std::error::Error>> {
     loop {
-      self.render();
-      match read().unwrap() {
+      self.render()?;
+      match read()? {
       Event::Key(KeyEvent { code, .. }) => match code {
       KeyCode::Char(ch) => match ch {
-      't' => self.travel(),
-      'p' => self.pickup(),
-      'g' => self.gather(),
-      'c' => self.craft(),
-      'u' => self.use_item(),
-      'i' => self.inventory(),
-      'w' => self.worn(),
+      't' => self.travel()?,
+      'p' => self.pickup()?,
+      'g' => self.gather()?,
+      'c' => self.craft()?,
+      'u' => self.use_item()?,
+      'i' => self.inventory()?,
+      'w' => self.worn()?,
       'r' => self.rest()?,
       'q' => {
-        return Err(t!("game.quit").into());
+        return Err(Box::new(Endgame::from(t!("game.quit"))));
       }
       _ => {}
       },
-      KeyCode::Esc => self.menu(),
+      KeyCode::Esc => self.menu()?,
       _ => {}
       },
       _ => {}
@@ -157,28 +165,36 @@ impl Game {
     }
   }
 
-  pub fn menu(&mut self) {}
-
-  pub fn rest(&mut self) -> Result<(), Endgame> {
+  pub fn menu(&mut self) -> Result<(), Box<dyn Error>> {
     let mut s = ScreenWriter::new_screen();
-    s.end();
-    let Some(sec) =
-      NumberRequester::new(t!("action.rest.prompt")).range(0..=10000).default(10).request()
+    s.write(t!("menu.title"))?;
+    Ok(())
+  }
+
+  pub fn rest(&mut self) -> Result<(), Box<dyn Error>> {
+    let mut s = ScreenWriter::new_screen();
+    s.end()?;
+    let Some(sec) = NumberRequester {
+      prompt: t!("action.rest.prompt"),
+      range: Some(0..=10000),
+      default: Some(10),
+      ..
+    }
+    .request()?
     else {
       return Ok(());
     };
     match self.player_action(Action {
       id: "rest",
       f: Arc::new(|_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)])),
-      progress: Duration::ZERO,
-      total_dur: Duration::s(sec),
+      total_dur: sec.s(),
+      ..
     }) {
-    Ok(()) => {}
+    Ok(()) => Ok(()),
     Err(not_ok) => {
-      s.message(not_ok.to_string());
+      s.message(not_ok.to_string())?;
       return Ok(());
     }
     }
-    self.time_pass(Duration::s(sec))
   }
 }

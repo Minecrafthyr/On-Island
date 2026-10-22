@@ -104,6 +104,16 @@ action:
   inventory:
     title: 物品栏
     entry: "%{name} ×%{count} %{volume} %{weight} - %{description}"
+    not_wearable: "%{name}无法穿戴。"
+    equipped: "已穿戴%{name}。"
+  worn:
+    title: 穿戴物品（选择装备以穿戴，选择已穿戴物品以卸下）
+    equip: 从物品栏穿戴物品
+    equip_title: 选择要穿戴的物品：
+    equip_entry: "%{name} ×%{count} - %{description}"
+    entry: "%{name} %{volume} %{weight} - %{description}"
+    unequip_failed: "无法卸下%{name}：物品栏空间不足。"
+    unequipped: "已卸下%{name}。"
   pickup:
     none: 这里没有能拾取的东西！
     title: 有以下物品可拾取：
@@ -128,7 +138,7 @@ action:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
     how_many: 制作多少次？
-    entry: "%{title}: %{inputs} -> %{outputs} (%{duration}秒，%{activity}×活动)"
+    entry: "%{title}: %{inputs} → %{outputs} (%{duration}秒，%{activity}×活动)"
     empty: 你没有足够的材料来进行任何合成。
     apply_failed: "%{recipe}合成失败。"
     incorrupted: 合成终止。

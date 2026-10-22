@@ -66,14 +66,17 @@ impl Player {
 }
 #[derive(Debug, Clone)]
 pub struct Endgame {
-  damage: Option<Damage>,
-  message: Option<String>,
+  pub damage: Option<Damage>,
+  pub message: Option<String>,
 }
 impl From<Damage> for Endgame {
   fn from(value: Damage) -> Self { Self { damage: Some(value), message: None } }
 }
 impl From<String> for Endgame {
   fn from(value: String) -> Self { Self { damage: None, message: Some(value) } }
+}
+impl From<Cow<'_, str>> for Endgame {
+  fn from(value: Cow<str>) -> Self { Self { damage: None, message: Some(value.into()) } }
 }
 impl Display for Endgame {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

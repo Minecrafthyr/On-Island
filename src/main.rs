@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   match catch_unwind(|| Game::default().run()) {
   Ok(Err(e)) =>
     if let Some(endgame) = e.downcast_ref::<Endgame>() {
-      ScreenWriter::new_screen().writeln(endgame.to_string()).end();
+      ScreenWriter::new_screen().writeln(endgame)?.end()?;
       sleep(std::time::Duration::from_secs(2));
       execute!(stdout(), LeaveAlternateScreen)?;
       disable_raw_mode()?;

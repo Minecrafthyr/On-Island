@@ -1,6 +1,6 @@
 use std::{
-  fmt::Display,
-  io::{Stdout, Write as _, stdout},
+  fmt::{Display, Write},
+  io::{ErrorKind::Other, Stdout, Write as _, stdout},
 };
 
 use crossterm::{
@@ -30,26 +30,31 @@ impl ScreenWriter {
     Self { out }
   }
 
-  pub fn write(&mut self, s: impl Display) -> &mut Self {
-    queue!(self.out, Print(s)).unwrap();
+  pub fn write(&mut self, s: impl Display) -> Result<&mut Self, std::io::Error> {
     self
+      .write_fmt(format_args!("{s}"))
+      .map_err(|_| std::io::Error::new(Other, "Failed to write to screen"))?;
+    Ok(self)
   }
 
-  pub fn endl(&mut self) -> &mut Self {
-    queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).unwrap();
-    self
+  pub fn endl(&mut self) -> Result<&mut Self, std::io::Error> {
+    queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1))?;
+    Ok(self)
   }
 
-  pub fn writeln(&mut self, s: impl Display) -> &mut Self { self.write(s).endl() }
-
-  pub fn flush(&mut self) -> &mut Self {
-    self.out.flush().unwrap();
-    self
+  pub fn writeln(&mut self, s: impl Display) -> Result<&mut Self, std::io::Error> {
+    self.write(s)?.endl()
   }
 
-  pub fn end(&mut self) {
-    queue!(self.out, Clear(FromCursorDown)).unwrap();
-    self.flush();
+  pub fn flush(&mut self) -> Result<&mut Self, std::io::Error> {
+    self.out.flush()?;
+    Ok(self)
+  }
+
+  pub fn end(&mut self) -> Result<(), std::io::Error> {
+    queue!(self.out, Clear(FromCursorDown))?;
+    self.flush()?;
+    Ok(())
   }
 }
 impl std::fmt::Write for ScreenWriter {
@@ -58,7 +63,7 @@ impl std::fmt::Write for ScreenWriter {
     while let Some(line) = iter.next() {
       queue!(self.out, Print(line)).map_err(|_| std::fmt::Error)?;
       if iter.peek().is_some() {
-        queue!(self.out, Clear(UntilNewLine), MoveToNextLine(1)).map_err(|_| std::fmt::Error)?;
+        self.endl().map_err(|_| std::fmt::Error)?;
       }
     }
     Ok(())

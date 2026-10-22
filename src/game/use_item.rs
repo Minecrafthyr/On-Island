@@ -5,7 +5,6 @@ use itertools::Itertools;
 use crate::{
   game::Game,
   io::ScreenWriter,
-  item::Item,
   player::{
     Effect,
     action::{Action, ActionContent},
@@ -15,7 +14,7 @@ use crate::{
 };
 
 impl Game {
-  pub fn use_item(&mut self) {
+  pub fn use_item(&mut self) -> Result<(), Box<dyn std::error::Error>> {
     let options: Vec<_> = self
       .player
       .worn
@@ -25,7 +24,7 @@ impl Game {
       .filter(|is| !is.item.uses.is_empty())
       .collect();
     if options.is_empty() {
-      return;
+      return Ok(());
     }
     let mut s = ScreenWriter::new_screen();
     let Some(choice) = s.list(DisplayList::new(
@@ -44,41 +43,45 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )) else {
-      return;
+    ))?
+    else {
+      return Ok(());
     };
     let item_stack = options[choice].clone();
     let item = &item_stack.item;
     let uses_data = item.uses;
-    let Some(choice) = s.list(
-      DisplayList::new(
-        Some(t!("action.use_item.data.title", item = item.name())),
-        uses_data
-          .iter()
-          .map(|ud| DataItem {
-            text: t!(
-              "action.use_item.data",
-              duration = ud.dur.as_s_f64() : {:.2},
-              activity = ud.activity: {:.2},
-              description = ud.description()
-            ),
-            selected: (),
-            enter: |i| Ok(i),
-          })
-          .collect(),
-      )
-      .indexing(),
-    ) else {
-      return;
+    let Some(choice) = s.list(DisplayList {
+      title: Some(t!("action.use_item.data.title", item = item.name())),
+      data: uses_data
+        .iter()
+        .map(|ud| DataItem {
+          text: t!(
+            "action.use_item.data",
+            duration = ud.dur.as_s_f64() : {:.2},
+            activity = ud.activity: {:.2},
+            description = ud.description()
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+      indexed: true,
+      ..
+    })?
+    else {
+      return Ok(());
     };
     let use_data = uses_data[choice];
 
-    let Some(count) = NumberRequester::new(t!("action.use_item.how_many"))
-      .range(1..=item_stack.count)
-      .default(1)
-      .request()
+    let Some(count) = NumberRequester {
+      prompt: t!("action.use_item.how_many"),
+      range: Some(1..=item_stack.count),
+      default: Some(1),
+      ..
+    }
+    .request()?
     else {
-      return;
+      return Ok(());
     };
     for _ in 0..count {
       match self.player_action(Action {
@@ -90,17 +93,18 @@ impl Game {
         ..
       }) {
       Ok(()) => {
-        let (_removed, mismatch) = self.player.take_items(|i: &Item| i == item, 1);
+        let (_removed, mismatch) = self.player.take_items(|i| i == item, 1);
         if mismatch == 0 {
           (use_data.on_use)(&mut self.player);
-          return;
+          return Ok(());
         }
       }
       Err(not_ok) => {
-        s.message(not_ok.to_string());
-        return;
+        s.message(not_ok.to_string())?;
+        return Ok(());
       }
       }
     }
+    Ok(())
   }
 }

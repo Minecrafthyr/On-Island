@@ -12,29 +12,29 @@ use crate::{
 };
 
 impl Game {
-  pub fn travel(&mut self) {
+  pub fn travel(&mut self) -> Result<(), Box<dyn std::error::Error>> {
     let options = &self.locations[self.player.location].can_go;
     let mut s = ScreenWriter::new_screen();
-    let Some(choice) = s.list(
-      DisplayList::new(
-        Some(t!("action.travel.title", current_location = self.player.location.name())),
-        options
-          .iter()
-          .map(|(location, time, _)| DataItem {
-            text: t!(
-              "action.travel.entry",
-              name = location.name(),
-              time = time,
-              description = location.description()
-            ),
-            selected: (),
-            enter: |i| Ok(i),
-          })
-          .collect(),
-      )
-      .indexing(),
-    ) else {
-      return;
+    let Some(choice) = s.list(DisplayList {
+      title: Some(t!("action.travel.title", current_location = self.player.location.name())),
+      data: options
+        .iter()
+        .map(|(location, time, _)| DataItem {
+          text: t!(
+            "action.travel.entry",
+            name = location.name(),
+            time = time,
+            description = location.description()
+          ),
+          selected: (),
+          enter: |i| Ok(i),
+        })
+        .collect(),
+      indexed: true,
+      ..
+    })?
+    else {
+      return Ok(());
     };
 
     let (new_location, travel_time, _) = options[choice];
@@ -48,9 +48,10 @@ impl Game {
       self.player.location = new_location;
     }
     Err(not_ok) => {
-      s.message(not_ok.to_string());
-      return;
+      s.message(not_ok.to_string())?;
+      return Ok(());
     }
     }
+    Ok(())
   }
 }

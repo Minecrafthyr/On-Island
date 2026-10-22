@@ -199,6 +199,7 @@ pub const VINE_BACKPACK: &ItemDef = &ItemDef {
   id: "vine_backpack",
   volume: (25.L()),
   weight: (900.g()),
+  wearable: true,
   pockets: (&[PocketDef {
     id: "vine_backpack.main",
     capacity: 18.L(),
@@ -225,6 +226,7 @@ pub const CANVAS_BACKPACK: &ItemDef = &ItemDef {
   id: "canvas_backpack",
   volume: (L(28)),
   weight: (g(700)),
+  wearable: true,
   pockets: (&[PocketDef {
     id: "canvas_backpack.main",
     capacity: 20.L(),
@@ -238,6 +240,7 @@ pub const COTTON_UNDERWEAR: &ItemDef = &ItemDef {
   id: "cotton_underwear",
   volume: (5.L()),
   weight: (1200.g()),
+  wearable: true,
   pockets: (&[PocketDef {
     id: "cotton_underwear.front_left",
     capacity: 300.mL(),
@@ -248,7 +251,7 @@ pub const COTTON_UNDERWEAR: &ItemDef = &ItemDef {
   ..
 };
 pub const COTTON_PANTIES: &ItemDef =
-  &ItemDef { id: "cotton_panties", volume: (L(1)), weight: (g(200)), .. };
+  &ItemDef { id: "cotton_panties", volume: (L(1)), weight: (g(200)), wearable: true, .. };
 pub const FIRE: &ItemDef =
   &ItemDef { id: "fire", volume: (mL(1)), weight: (Mass::ZERO), phase: (Phase::Gas), .. };
 

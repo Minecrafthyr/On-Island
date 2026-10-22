@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::{
   game::Game,
   io::ScreenWriter,
-  item::{Item, ItemStack, ItemStacks},
+  item::{ItemStack, ItemStacks},
   player::{
     Effect, Player,
     action::{Action, ActionContent},
@@ -41,12 +41,12 @@ pub fn max_batch_craft(c: &impl IterStack, craft: &Crafting) -> u64 {
 }
 
 impl Game {
-  pub fn craft(&mut self) {
+  pub fn craft(&mut self) -> Result<(), Box<dyn std::error::Error>> {
     let options: Vec<_> = CRAFTING_RECIPES.iter().collect();
     let mut s = ScreenWriter::new_screen();
-    let Some(choice) = s.list(DisplayList::new(
-      Some(t!("action.crafting.title")),
-      options
+    let Some(choice) = s.list(DisplayList {
+      title: Some(t!("action.crafting.title")),
+      data: options
         .iter()
         .enumerate()
         .map(|(i, recipe)| DataItem {
@@ -55,16 +55,21 @@ impl Game {
           enter: |i| Ok(i),
         })
         .collect(),
-    )) else {
-      return;
+      ..
+    })?
+    else {
+      return Ok(());
     };
     let recipe = options[choice];
-    let Some(batch_count) = NumberRequester::new(t!("action.crafting.how_many"))
-      .range(1..=max_batch(&self.player.iter_stack().collect(), &recipe.steps[0].inputs)) // TODO: fix this
-      .default(1)
-      .request()
+    let Some(batch_count) = NumberRequester {
+      prompt: t!("action.crafting.how_many"),
+      range: Some(1..=max_batch(&self.player.iter_stack().collect(), &recipe.steps[0].inputs)), // TODO: fix this
+      default: Some(1),
+      ..
+    }
+    .request()?
     else {
-      return;
+      return Ok(());
     };
     for _ in 0..batch_count {
       // TODO: resume and one by one taking recipe req :)
@@ -77,16 +82,17 @@ impl Game {
         }) {
         Ok(()) =>
           if !self.apply_recipe_step(rs) {
-            s.message(t!("action.crafting.apply_failed", recipe = recipe.name()));
-            return;
+            s.message(t!("action.crafting.apply_failed", recipe = recipe.name()))?;
+            return Ok(());
           },
         Err(not_ok) => {
-          s.message(not_ok.to_string());
-          return;
+          s.message(not_ok.to_string())?;
+          return Ok(());
         }
         }
       }
     }
+    Ok(())
   }
 
   pub fn apply_recipe_step(&mut self, recipe: &Step) -> bool {
@@ -94,7 +100,7 @@ impl Game {
       if req.consume == ConsumeType::None {
         return;
       }
-      p.take_items(|i: &Item| req.item.matches(i), req.count);
+      p.take_items(|i| req.item.matches(i), req.count);
     }
     pub fn take_depends(p: &mut Player, depends: &Depends) {
       match depends {

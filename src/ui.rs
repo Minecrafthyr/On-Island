@@ -1,33 +1,32 @@
 use std::{
   fmt::{Display, Write as _},
+  io::ErrorKind::Other,
+  num::NonZero,
   ops::{Bound, RangeBounds},
   str::FromStr,
   thread::sleep,
 };
 
 use crossterm::{
-  cursor::{MoveLeft, MoveRight, MoveTo, position},
+  cursor::{MoveLeft, MoveRight, MoveTo},
   event::{Event, KeyCode, KeyEvent, read},
   execute, queue,
   style::{Attribute::Bold, Print, Stylize},
   terminal::{Clear, ClearType::UntilNewLine},
 };
 
-use crate::{
-  builder_method,
-  io::{AVOID_MISTAKE_INPUT_DUR, ScreenWriter},
-};
-
+use crate::io::{AVOID_MISTAKE_INPUT_DUR, ScreenWriter};
+#[expect(unevaluated_default_field_value)]
 pub struct NumberRequester<
   'a,
   PromptT: Display,
   T: std::cmp::PartialOrd + FromStr + Display + Copy,
   RangeT: RangeBounds<T>,
 > {
-  prompt: PromptT,
-  range: Option<RangeT>,
-  check: Option<&'a dyn Fn(T) -> Option<String>>,
-  default: Option<T>,
+  pub prompt: PromptT,
+  pub range: Option<RangeT> = None,
+  pub check: Option<&'a dyn Fn(T) -> Option<String>> = None,
+  pub default: Option<T> = None,
 }
 impl<
   'a,
@@ -36,15 +35,7 @@ impl<
   RangeT: RangeBounds<T>,
 > NumberRequester<'a, PromptT, T, RangeT>
 {
-  builder_method! {
-    range: Option<RangeT>,
-    check: Option<&'a dyn Fn(T) -> Option<String>>,
-    default: Option<T>
-  }
-
-  pub fn new(prompt: PromptT) -> Self { Self { prompt, range: None, check: None, default: None } }
-
-  pub fn request(self) -> Option<T>
+  pub fn request(self) -> Result<Option<T>, std::io::Error>
   where
     <T as FromStr>::Err: std::fmt::Debug,
   {
@@ -65,10 +56,13 @@ impl<
       };
     }
     write!(p, "：").unwrap();
-    s.writeln(&p).end();
+    s.writeln(&p)?.end()?;
 
     let mut buf = String::new();
-    while let Ok(Event::Key(KeyEvent { code, .. })) = read() {
+    loop {
+      let Event::Key(KeyEvent { code, .. }) = read()? else {
+        continue;
+      };
       // let (x, y) = position().unwrap();
       use KeyCode::*;
       match code {
@@ -86,30 +80,30 @@ impl<
           if let Some(v) = self.default {
             v
           } else {
-            s.endl().writeln(t!("ui.get_number.empty", prompt = p)).flush();
+            s.endl()?.writeln(t!("ui.get_number.empty", prompt = p))?.flush()?;
             continue;
           }
         } else {
           buf.parse().unwrap()
         };
         if self.range.as_ref().map(|r| !r.contains(&number)).unwrap_or(false) {
-          s.endl().writeln(t!("ui.get_number.invalid", prompt = p)).flush();
+          s.endl()?.writeln(t!("ui.get_number.invalid", prompt = p))?.flush()?;
           buf.clear();
           continue;
         }
         if let Some(c) = self.check
           && let Some(f) = c(number)
         {
-          s.endl().write(f).write(&p).endl().flush();
+          s.endl()?.write(f)?.write(&p)?.endl()?.flush()?;
           buf.clear();
           continue;
         }
-        return Some(number);
+        return Ok(Some(number));
       }
       _ => {}
       }
     }
-    None
+    Ok(None)
   }
 }
 pub struct DataItem<
@@ -123,33 +117,39 @@ pub struct DataItem<
 }
 
 pub trait DrawEntries {
-  fn draw_entries(&mut self, s: &mut ScreenWriter);
+  fn draw_entries(&mut self, s: &mut ScreenWriter) -> Result<(), std::io::Error>;
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn: FnMut(&StrT) -> StrT, EnterFn> DrawEntries
   for DisplayList<TitleT, StrT, SelectedFn, EnterFn>
 {
-  fn draw_entries(&mut self, s: &mut ScreenWriter) {
+  fn draw_entries(&mut self, s: &mut ScreenWriter) -> Result<(), std::io::Error> {
     for (i, DataItem { text, selected, .. }) in self.data.iter_mut().enumerate() {
+      if self.indexed {
+        write!(s, "[{i}] ")
+          .map_err(|_| std::io::Error::new(Other, "format error: cannot write to screen"))?;
+      }
       if i == self.selecting {
-        s.writeln((selected)(text).as_ref().attribute(Bold));
+        s.writeln((selected)(text).as_ref().attribute(Bold))?;
       } else {
-        s.writeln(text.as_ref());
+        s.writeln(text.as_ref())?;
       }
     }
+    Ok(())
   }
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, EnterFn> DrawEntries
   for DisplayList<TitleT, StrT, (), EnterFn>
 {
-  fn draw_entries(&mut self, s: &mut ScreenWriter) {
+  fn draw_entries(&mut self, s: &mut ScreenWriter) -> Result<(), std::io::Error> {
     for DataItem { text, .. } in self.data.iter_mut() {
-      s.writeln(text.as_ref());
+      s.writeln(text.as_ref())?;
     }
+    Ok(())
   }
 }
 pub trait Enter {
   type ReT;
-  fn enter(&mut self, s: &mut ScreenWriter) -> Option<Self::ReT>;
+  fn enter(&mut self, s: &mut ScreenWriter) -> Result<Option<Self::ReT>, std::io::Error>;
 }
 
 impl<
@@ -162,15 +162,15 @@ impl<
 {
   type ReT = ReT;
 
-  fn enter(&mut self, s: &mut ScreenWriter) -> Option<ReT> {
+  fn enter(&mut self, s: &mut ScreenWriter) -> Result<Option<ReT>, std::io::Error> {
     let f = &mut self.data[self.selecting].enter;
     match (f)(self.selecting) {
-    Ok(r) => return Some(r),
+    Ok(r) => return Ok(Some(r)),
     Err(e) => {
-      s.message(e.to_string());
+      s.message(e.to_string())?;
     }
     }
-    None
+    Ok(None)
   }
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn> Enter
@@ -178,28 +178,22 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn> Enter
 {
   type ReT = ();
 
-  fn enter(&mut self, _s: &mut ScreenWriter) -> Option<()> { None }
+  fn enter(&mut self, _s: &mut ScreenWriter) -> Result<Option<()>, std::io::Error> { Ok(None) }
 }
+#[expect(unevaluated_default_field_value)]
 pub struct DisplayList<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn> {
-  origin_row: u16,
-  title: Option<TitleT>,
-  data: Vec<DataItem<StrT, SelectedFn, EnterFn>>,
-  selecting: usize,
-  overflow: bool,
-  indexed: bool,
+  pub origin_row: Option<NonZero<u16>> = None,
+  pub title: Option<TitleT> = None,
+  pub data: Vec<DataItem<StrT, SelectedFn, EnterFn>>,
+  pub selecting: usize = 0,
+  pub overflow: bool = true,
+  pub indexed: bool = false,
 }
 impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
   DisplayList<TitleT, StrT, SelectedFn, EnterFn>
 {
   pub fn new(title: Option<TitleT>, data: Vec<DataItem<StrT, SelectedFn, EnterFn>>) -> Self {
-    Self {
-      origin_row: position().unwrap().1,
-      title,
-      data,
-      selecting: 0,
-      overflow: true,
-      indexed: false,
-    }
+    Self { title, data, .. }
   }
 
   pub fn title(mut self, title: TitleT) -> Self {
@@ -207,18 +201,18 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
     self
   }
 
-  /// Turn on index before display item to select instantly.
   pub fn indexing(mut self) -> Self {
     self.indexed = true;
     self
   }
 
   fn recalc_select(&mut self) {
+    let len = self.data.len();
     if self.overflow {
-      self.selecting %= self.data.len();
+      self.selecting %= len;
     } else {
-      if self.selecting >= self.data.len() {
-        self.selecting = self.data.len() - 1;
+      if self.selecting >= len {
+        self.selecting = len - 1;
       }
     }
   }
@@ -231,7 +225,7 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
   }
 
   pub fn at(mut self, row: u16) -> Self {
-    self.origin_row = row;
+    self.origin_row = Some(NonZero::new(row).unwrap_or(NonZero::new(1).unwrap()));
     self
   }
 
@@ -245,32 +239,37 @@ impl<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>
 where
   Self: DrawEntries + Enter,
 {
-  pub fn run(&mut self, s: &mut ScreenWriter) -> Option<<Self as Enter>::ReT> {
+  pub fn run(
+    &mut self, s: &mut ScreenWriter,
+  ) -> Result<Option<<Self as Enter>::ReT>, std::io::Error> {
     'io: loop {
-      queue!(s.out, MoveTo(self.origin_row, 0)).unwrap();
+      if let Some(origin_row) = self.origin_row {
+        queue!(s.out, MoveTo(origin_row.get(), 0))?;
+      }
       if let Some(t) = self.title.as_ref() {
-        s.writeln(t.as_ref());
+        s.writeln(t.as_ref())?;
       }
       if self.data.is_empty() {
-        s.message(t!("ui.display_list.empty"));
-        return None;
+        s.message(t!("ui.display_list.empty"))?;
+        return Ok(None);
       }
-      self.draw_entries(s);
-      s.end();
+      self.draw_entries(s)?;
+      s.end()?;
       let mut last_press = std::time::Instant::now();
       let mut count = 0usize;
 
       loop {
-        let Event::Key(KeyEvent { code, modifiers: _, kind, state: _ }) = read().unwrap() else {
+        let Event::Key(KeyEvent { code, modifiers: _, kind, state: _ }) = read()? else {
           continue;
         };
         let now = std::time::Instant::now();
+        let max_select = self.data.len() - 1;
         use KeyCode::*;
         match code {
         Up =>
           if self.selecting == 0 {
             if self.overflow {
-              self.selecting = self.data.len() - 1;
+              self.selecting = max_select;
               continue 'io;
             }
           } else {
@@ -278,7 +277,7 @@ where
             continue 'io;
           },
         Down =>
-          if self.selecting == self.data.len() - 1 {
+          if self.selecting == max_select {
             if self.overflow {
               self.selecting = 0;
               continue 'io;
@@ -288,16 +287,16 @@ where
             continue 'io;
           },
         Enter => {
-          if let r @ Some(_) = self.enter(s) {
-            return r;
+          if let r @ Some(_) = self.enter(s)? {
+            return Ok(r);
           }
           break;
         }
-        Esc => return None,
+        Esc => return Ok(None),
         Char(n) if kind.is_press() && matches!(n, '0'..'9') => {
           let n = n.to_digit(10).unwrap() as usize;
           if now - last_press < std::time::Duration::from_millis(300) {
-            count = (count * 10 + n).min(self.data.len() - 1);
+            count = (count * 10 + n).min(max_select);
             self.selecting = count;
           } else {
             count = n;
@@ -315,22 +314,23 @@ where
 impl ScreenWriter {
   pub fn list<TitleT: AsRef<str>, StrT: AsRef<str>, SelectedFn, EnterFn>(
     &mut self, mut display_list: DisplayList<TitleT, StrT, SelectedFn, EnterFn>,
-  ) -> Option<<DisplayList<TitleT, StrT, SelectedFn, EnterFn> as Enter>::ReT>
+  ) -> Result<Option<<DisplayList<TitleT, StrT, SelectedFn, EnterFn> as Enter>::ReT>, std::io::Error>
   where
     DisplayList<TitleT, StrT, SelectedFn, EnterFn>: DrawEntries + Enter,
   {
     display_list.run(self)
   }
 
-  pub fn message(&mut self, msg: impl AsRef<str>) -> &mut Self {
-    self.writeln(msg.as_ref()).end();
+  pub fn message(&mut self, msg: impl AsRef<str>) -> Result<&mut Self, std::io::Error> {
+    self.writeln(msg.as_ref())?;
+    self.end()?;
     sleep(AVOID_MISTAKE_INPUT_DUR);
-    self.writeln(t!("ui.continue_prompt")).flush();
+    self.writeln(t!("ui.continue_prompt"))?.flush()?;
     loop {
-      if let Event::Key(key_event) = read().unwrap()
+      if let Event::Key(key_event) = read()?
         && key_event.is_press()
       {
-        return self;
+        return Ok(self);
       }
     }
   }

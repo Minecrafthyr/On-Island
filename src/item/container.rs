@@ -63,17 +63,6 @@ impl Pocket {
     self.holdable_count_i(&stack.item, stack.count)
   }
 
-  // pub fn insert_items(&mut self, item: &Item, count: u64) {
-  //   let count = self.holdable_count(stack);
-  //   if count == 0 {
-  //     return;
-  //   }
-  //   self.volume_used += stack.item.volume * count;
-  //   self.weight += stack.item.weight * count;
-  //   stack.count -= count;
-  //   self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
-  // }
-
   pub fn insert_items(&mut self, item: &Item, count: u64) -> u64 {
     let count = self.holdable_count_i(item, count);
     if count == 0 {

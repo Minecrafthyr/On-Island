@@ -64,6 +64,7 @@ pub struct ItemDef {
   pub weight: Mass,
   pub phase: Phase = Phase::Solid,
   pub longest_side: Length = Length::ZERO,
+  pub wearable: bool = false,
   pub pockets: &'static [PocketDef] = &[] as &'static [PocketDef],
   pub gather: Gather = Gather::None,
   pub uses: &'static [UseData] = &[] as &'static [UseData],

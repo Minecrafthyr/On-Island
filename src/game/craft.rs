@@ -229,7 +229,7 @@ impl Game {
     }
     for ids in recipe.outputs.iter().copied() {
       if let Some(r) = self.player.insert_stack(ids.into()) {
-        self.locations[self.player.location].pickup_stacks.insert_stack(r);
+        self.locations[self.player.location].pickup_stacks += r;
       }
     }
     true
@@ -292,7 +292,7 @@ mod tests {
     let step = &crate::recipe::crafting::CRAFTING_RECIPES[3].steps[0];
     let pocket = &mut game.player.worn[0].pockets[0];
     pocket.closed = false;
-    pocket.stacks.insert_stack(crate::item::LIVING_FISH.item() * 1);
+    pocket.stacks += crate::item::LIVING_FISH.item() * 1;
     pocket.recalc_volume_and_size();
 
     assert!(game.apply_recipe_step(step));
@@ -314,7 +314,7 @@ mod tests {
     let step = &crate::recipe::crafting::CRAFTING_RECIPES[3].steps[0];
     let pocket = &mut game.player.worn[0].pockets[0];
     pocket.closed = false;
-    pocket.stacks.insert_stack(BERRY.item() * 2);
+    pocket.stacks += BERRY.item() * 2;
     pocket.recalc_volume_and_size();
 
     assert!(!game.apply_recipe_step(step));

@@ -213,7 +213,7 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for Player {
     let mut removed = ItemStacks::new();
     for p in self.worn.iter_mut().flat_map(|i| i.pockets.iter_mut()) {
       let (r, m) = p.take_items(&f, count);
-      removed.insert_stacks(r);
+      removed += r;
       count = m;
     }
     (removed, count)

@@ -168,7 +168,7 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for Item {
     let mut removed_total = ItemStacks::new();
     for p in &mut self.pockets {
       let (removed, mismatch) = p.take_items(&f, count);
-      removed_total.insert_stacks(removed);
+      removed_total += removed;
       count = mismatch;
       if count == 0 {
         break;

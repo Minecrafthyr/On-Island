@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::{AddAssign, Index, IndexMut};
 
 use enumflags2::BitFlags;
 use inew::New;
@@ -31,8 +31,9 @@ const impl<const S: usize> From<&'static [ItemDefStack; S]> for ItemDefStacks {
 #[derive_const(Default, New)]
 #[new(const = true)]
 pub struct ItemStacks(#[new(default = vec![])] pub Vec<ItemStack>);
+
 impl IntoIterator for ItemStacks {
-  type IntoIter = <Vec<stack::ItemStack> as IntoIterator>::IntoIter;
+  type IntoIter = <Vec<ItemStack> as IntoIterator>::IntoIter;
   type Item = ItemStack;
 
   fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
@@ -77,7 +78,7 @@ impl ItemStacks {
       if let Some(outputs) = stack.item.tick(env) {
         for mut output in outputs {
           output.count = output.count.saturating_mul(stack.count);
-          converted.insert_stack(output);
+          converted += output;
         }
         stack.count = 0;
       }
@@ -116,6 +117,21 @@ impl ItemStacks {
     }
   }
 }
+impl AddAssign<ItemDefStacks> for ItemStacks {
+  fn add_assign(&mut self, rhs: ItemDefStacks) { self.insert_from_defs(rhs); }
+}
+impl AddAssign<Item> for ItemStacks {
+  fn add_assign(&mut self, rhs: Item) { self.insert_item(rhs); }
+}
+impl AddAssign<(&Item, u64)> for ItemStacks {
+  fn add_assign(&mut self, rhs: (&Item, u64)) { self.insert_items(rhs.0, rhs.1); }
+}
+impl AddAssign<ItemStack> for ItemStacks {
+  fn add_assign(&mut self, rhs: ItemStack) { self.insert_stack(rhs); }
+}
+impl AddAssign<ItemStacks> for ItemStacks {
+  fn add_assign(&mut self, rhs: ItemStacks) { self.insert_stacks(rhs); }
+}
 impl IterStack for ItemStacks {
   fn iter_stack(&self) -> impl Iterator<Item = &ItemStack> { self.iter() }
 }
@@ -130,12 +146,12 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for ItemStacks {
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        removed.insert_stack(self.remove(i));
+        removed += self.remove(i);
       } else {
         if count < self[i].count {
           self[i].count = self[i].count.saturating_sub(count);
         } else {
-          removed.insert_stack(self.remove(i));
+          removed += self.remove(i);
         }
         return (removed, 0);
       }
@@ -162,7 +178,7 @@ mod tests {
     let env = EnvData::NaturalAir.into();
 
     for _ in 0..600_000 {
-      converted.insert_stacks(source.tick(env));
+      converted += source.tick(env);
       if source.is_empty() {
         break;
       }

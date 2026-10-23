@@ -70,7 +70,7 @@ impl Pocket {
     }
     self.volume_used += item.volume * count;
     self.weight += item.weight * count;
-    self.stacks.insert_stack(item.clone() * count);
+    self.stacks += item.clone() * count;
     count
   }
 
@@ -82,7 +82,7 @@ impl Pocket {
     self.volume_used += stack.item.volume * count;
     self.weight += stack.item.weight * count;
     stack.count -= count;
-    self.stacks.insert_stack(ItemStack { item: stack.item.clone(), count });
+    self.stacks += ItemStack { item: stack.item.clone(), count };
     count
   }
 

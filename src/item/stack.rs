@@ -43,14 +43,14 @@ impl ItemStack {
     for _ in 0..self.count {
       let mut item = self.item.clone();
       item.insert_stacks_from(stacks);
-      m.insert_item(item);
+      m += item;
     }
     Some(m)
   }
 
   pub fn insert_stacks_recursive(&mut self, mut stacks: ItemStacks) -> Option<ItemStacks> {
     if let Some(m) = self.insert_stacks_separate(&mut stacks) {
-      stacks.insert_stacks(m);
+      stacks += m;
     }
     Some(stacks)
   }

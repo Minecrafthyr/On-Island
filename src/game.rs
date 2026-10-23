@@ -59,10 +59,10 @@ impl Game {
       .collect();
     let mut converted = ItemStacks::new();
     for pocket in self.player.worn.iter_mut().flat_map(|item| item.pockets.iter_mut()) {
-      converted.insert_stacks(pocket.stacks.tick(env));
+      converted += pocket.stacks.tick(env);
     }
     if let Some(left) = self.player.insert_stacks(converted) {
-      self.locations[self.player.location].pickup_stacks.insert_stacks(left);
+      self.locations[self.player.location].pickup_stacks += left;
     }
     Ok(())
   }

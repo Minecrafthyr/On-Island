@@ -149,9 +149,9 @@ pub struct LocationData {
 impl LocationData {
   pub fn tick(&mut self, time: Duration, rng: &mut impl Rng) {
     let converted_gather = self.gather_stacks.tick(self.env);
-    self.gather_stacks.insert_stacks(converted_gather);
+    self.gather_stacks += converted_gather;
     let converted_pickups = self.pickup_stacks.tick(self.env);
-    self.pickup_stacks.insert_stacks(converted_pickups);
+    self.pickup_stacks += converted_pickups;
     for (i, p) in &mut self.res {
       let add_count = p.tick(time, rng);
       if let Some(is) = self.gather_stacks.iter_mut().find(|is| is.item == *i) {

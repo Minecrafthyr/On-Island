@@ -72,7 +72,6 @@ pub const SEA_WATER: &ItemDef = &ItemDef {
     activity: 1.01,
     on_use: |player| {
       player.water -= 20.s();
-      todo!("salt")
     },
   }]),
   ..
@@ -260,3 +259,18 @@ pub static WATER_BOTTLE: LazyLock<Item> = LazyLock::new(|| {
   item.pockets[0].stacks.insert_stack(WATER.item() * 500);
   item
 });
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn drinking_sea_water_applies_its_thirst_penalty_without_panicking() {
+    let mut player = crate::player::Player::default();
+    let initial_water = player.water;
+
+    (SEA_WATER.uses[0].on_use)(&mut player);
+
+    assert_eq!(player.water, initial_water - 20.s());
+  }
+}

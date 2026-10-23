@@ -32,7 +32,6 @@ pub enum Phase {
 }
 type SingleResFn = fn() -> ItemStacks;
 type MultipleResFn = fn(u64) -> ItemStacks;
-/// TODO: expands to struct, with different requirements
 #[derive(Clone, Copy)]
 pub enum Gather {
   None,
@@ -109,7 +108,6 @@ const impl Mul<u64> for Item {
 }
 
 impl Item {
-  // TODO: improve tick items
   pub fn tick(&mut self, env: BitFlags<EnvData>) -> Option<ItemStacks> {
     for Conversion { def, progress } in &mut self.conv {
       let ConversionDef { cond, dur, into } = def;

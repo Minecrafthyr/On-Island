@@ -58,10 +58,8 @@ impl Game {
       .filter(|env_bit| matches!(env_bit, NaturalAir | CaveAir | NoAir))
       .collect();
     let mut converted = ItemStacks::new();
-    for mut s in
-      self.player.worn.iter().flat_map(|i| i.pockets.iter()).flat_map(|p| p.stacks.iter()).cloned()
-    {
-      s.item.tick(env).map(|ss| converted.insert_stacks(ss));
+    for pocket in self.player.worn.iter_mut().flat_map(|item| item.pockets.iter_mut()) {
+      converted.insert_stacks(pocket.stacks.tick(env));
     }
     if let Some(left) = self.player.insert_stacks(converted) {
       self.locations[self.player.location].pickup_stacks.insert_stacks(left);

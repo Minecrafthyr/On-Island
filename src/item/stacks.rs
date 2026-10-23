@@ -1,9 +1,13 @@
 use std::ops::{Index, IndexMut};
 
+use enumflags2::BitFlags;
 use inew::New;
 
 use super::*;
-use crate::utils::{IterStack, TakeItems};
+use crate::{
+  location::EnvData,
+  utils::{IterStack, TakeItems},
+};
 #[derive(Clone, Copy)]
 #[derive_const(Default)]
 pub struct ItemDefStacks(pub &'static [ItemDefStack]);
@@ -67,6 +71,21 @@ const impl DerefMut for ItemStacks {
 impl ItemStacks {
   pub fn iter(&self) -> impl Iterator<Item = &ItemStack> { self.0.iter() }
 
+  pub fn tick(&mut self, env: BitFlags<EnvData>) -> ItemStacks {
+    let mut converted = ItemStacks::new();
+    for stack in &mut self.0 {
+      if let Some(outputs) = stack.item.tick(env) {
+        for mut output in outputs {
+          output.count = output.count.saturating_mul(stack.count);
+          converted.insert_stack(output);
+        }
+        stack.count = 0;
+      }
+    }
+    self.0.retain(|stack| stack.count != 0);
+    converted
+  }
+
   pub fn insert_from_defs(&mut self, defs: ItemDefStacks) {
     for def in defs.into_iter() {
       self.insert_stack((*def).into());
@@ -128,5 +147,30 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for ItemStacks {
 impl<I: Into<ItemStack>> FromIterator<I> for ItemStacks {
   fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
     Self(iter.into_iter().map(|i| i.into()).collect())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::location::EnvData;
+
+  #[test]
+  fn conversion_replaces_each_item_in_a_stack() {
+    let mut source = ItemStacks(vec![crate::item::LIVING_FISH.item() * 3]);
+    let mut converted = ItemStacks::new();
+    let env = EnvData::NaturalAir.into();
+
+    for _ in 0..600_000 {
+      converted.insert_stacks(source.tick(env));
+      if source.is_empty() {
+        break;
+      }
+    }
+
+    assert!(source.is_empty());
+    assert_eq!(converted.len(), 1);
+    assert!(converted[0].item.def == crate::item::RAW_FISH);
+    assert_eq!(converted[0].count, 3);
   }
 }

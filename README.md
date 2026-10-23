@@ -1,6 +1,6 @@
 # On Island
 
-This is a island survival game, functionalities are incomplete and basically not working now.
+This is an experimental island survival game; some features are incomplete.
 
 Contributes are welcome.
 
@@ -8,13 +8,13 @@ Currently we only have Simplified Chinese translation, without English.
 
 ---
 
-这是一个孤岛生存游戏。目前功能不完备，且基本上没法运行。
+这是一个孤岛生存游戏，目前仍处于实验阶段，部分功能不完备。
 
 欢迎贡献。
 
 目前只有中文翻译，没有英文。
 
-## 技术细节/计划
+## 技术细节
 
 使用Rust语言。项目具有相当实验性，使用了nightly的const相关特性开关。
 
@@ -22,4 +22,15 @@ Currently we only have Simplified Chinese translation, without English.
 
 游戏时间精确至us，1ms为一刻。在行动确定后时间才会流逝。
 
+## 路线图
+
 设计为尽可能真实，并将在稳定后添加超现实内容。
+
+按以下优先级推进；每阶段以可重复验证的游戏行为和自动化测试作为完成标准。
+
+1. **完善核心规则**：补齐制作配方的多步骤材料规划与消耗规则，覆盖物品转换、堆叠数量、行动中断和生存数值的测试。
+2. **打通可玩流程**：完善新游戏、菜单、物品栏与行动反馈，确保玩家能从开局完成采集、制作、旅行、休息直到明确的游戏结束状态。
+3. **扩展生存内容**：逐步实现环境影响、伤害与生物交互，并使食物、水源和装备形成可平衡的生存循环。
+4. **改善内容维护**：整理物品与采集定义，明确多阶段配方及效果的配置模型；补充英文翻译，并评估外部数据加载。
+5. **稳定与发布准备**：增加保存/读取、命令行/终端兼容性测试与持续集成；评估 nightly 特性并记录稳定版迁移方案。
+

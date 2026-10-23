@@ -87,12 +87,25 @@ impl Error for WaitActionError {}
 impl Display for WaitActionError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
 }
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug)]
 pub enum ActionError {
-  #[error("Push action failed: {0}")]
-  Push(#[from] PushActionError),
-  #[error("Wait action failed: {0}")]
-  Wait(#[from] WaitActionError),
+  Push(PushActionError),
+  Wait(WaitActionError),
+}
+impl Display for ActionError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    use ActionError::*;
+    match self {
+    Push(e) => write!(f, "{e}"),
+    Wait(e) => write!(f, "{e}"),
+    }
+  }
+}
+impl From<PushActionError> for ActionError {
+  fn from(value: PushActionError) -> Self { Self::Push(value) }
+}
+impl From<WaitActionError> for ActionError {
+  fn from(value: WaitActionError) -> Self { Self::Wait(value) }
 }
 impl Game {
   pub fn wait_player_action(&mut self, id: &'static str) -> Result<(), WaitActionError> {
@@ -126,11 +139,9 @@ impl Game {
     ScreenWriter::new_screen()
       .writeln(t!("game.title"))?
       .endl()?
-      .writeln(t!(
-        "game.stats",
-        name = t!("attribute.health.name"),
-        value = format!("{:.2}%", self.player.health)
-      ))?
+      .writeln(
+        t!("game.stats", name = t!("attribute.health.name"), value = self.player.health : {:.2}),
+      )?
       .writeln(t!("game.stats", name = t!("attribute.energy.name"), value = self.player.energy))?
       .writeln(t!("game.stats", name = t!("attribute.water.name"), value = self.player.water))?
       .writeln(t!("game.status_line", location = self.player.location.name()))?

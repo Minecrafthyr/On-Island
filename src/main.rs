@@ -26,17 +26,15 @@ use crossterm::{
 };
 
 use crate::{game::Game, io::ScreenWriter, player::Endgame};
+pub mod creature;
 pub mod damage;
 pub mod game;
-pub mod recipe;
-// pub mod i18n;
-// pub mod env;
-pub mod creature;
 pub mod io;
 pub mod item;
 pub mod location;
 pub mod player;
 pub mod preclude;
+pub mod recipe;
 pub mod ui;
 pub mod units;
 pub mod utils;

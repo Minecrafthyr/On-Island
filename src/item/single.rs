@@ -1,4 +1,7 @@
-use std::{borrow::Cow, ops::Mul};
+use std::{
+  borrow::Cow,
+  ops::{Add, Mul},
+};
 
 use enumflags2::BitFlags;
 use inew::New;
@@ -8,6 +11,7 @@ use crate::{
   item::container::{Pocket, PocketDef},
   location::{EnvCondition, EnvData},
   player::Player,
+  recipe::crafting::PausedCraft,
   utils::{NameAndDesc, TakeItems},
 };
 #[derive(Clone, Copy)]
@@ -70,10 +74,16 @@ pub struct ItemDef {
   pub conversions: &'static [ConversionDef] = &[] as &'static [ConversionDef],
 }
 
-const impl Mul<u64> for &'static ItemDef {
+const impl Add<u64> for &'static ItemDef {
   type Output = ItemDefStack;
 
-  fn mul(self, rhs: u64) -> Self::Output { ItemDefStack::new(self, rhs) }
+  fn add(self, rhs: u64) -> Self::Output { ItemDefStack::new(self, rhs) }
+}
+
+impl Mul<u64> for &'static ItemDef {
+  type Output = ItemStack;
+
+  fn mul(self, rhs: u64) -> Self::Output { ItemStack::from_def(self, rhs) }
 }
 
 impl NameAndDesc for ItemDef {
@@ -99,6 +109,8 @@ pub struct Item {
   pub pockets: Vec<Pocket>,
   #[new(default = vec![])]
   pub conv: Vec<Conversion>,
+  #[new(default = None)]
+  pub(crate) paused_craft: Option<Box<PausedCraft>>,
 }
 
 const impl Mul<u64> for Item {
@@ -108,6 +120,27 @@ const impl Mul<u64> for Item {
 }
 
 impl Item {
+  pub(crate) fn from_paused_craft(paused_craft: PausedCraft) -> Self {
+    let mut item: Self = PAUSED_CRAFT.into();
+    item.paused_craft = Some(Box::new(paused_craft));
+    item
+  }
+
+  pub fn get_weight(&self) -> Mass {
+    self.paused_craft.as_ref().map_or(self.weight, |paused| paused.input_weight())
+      + self.pockets.iter().map(|p| p.weight).fold(Mass::ZERO, |m, p| m + p)
+  }
+
+  pub fn get_volume(&self) -> Volume {
+    self.paused_craft.as_ref().map_or(self.volume, |paused| paused.input_volume())
+      + self
+        .pockets
+        .iter()
+        .filter(|p| !p.rigid)
+        .map(|p| p.volume_used)
+        .fold(Volume::ZERO, |v, p| v + p)
+  }
+
   pub fn tick(&mut self, env: BitFlags<EnvData>) -> Option<ItemStacks> {
     for Conversion { def, progress } in &mut self.conv {
       let ConversionDef { cond, dur, into } = def;
@@ -124,20 +157,6 @@ impl Item {
   pub fn has_free_pockets(&self) -> bool {
     self.pockets.iter().filter(|p| p.capacity > p.volume_used && p.max_weight > p.weight).count()
       > 0
-  }
-
-  pub fn get_weight(&self) -> Mass {
-    self.weight + self.pockets.iter().map(|p| p.weight).fold(Mass::ZERO, |m, p| m + p)
-  }
-
-  pub fn get_volume(&self) -> Volume {
-    self.volume
-      + self
-        .pockets
-        .iter()
-        .filter(|p| !p.rigid)
-        .map(|p| p.volume_used)
-        .fold(Volume::ZERO, |v, p| v + p)
   }
 
   pub fn insert_stack_from(&mut self, stack: &mut ItemStack) -> u64 {
@@ -159,7 +178,7 @@ impl Item {
     for stack in stacks.iter_mut() {
       count += self.insert_stack_from(stack);
     }
-    *stacks = std::mem::take(stacks).0.into_iter().filter(|stack| stack.count != 0).collect();
+    *stacks = std::mem::take(stacks).into_iter().filter(|stack| stack.count != 0).collect();
     count
   }
 }
@@ -189,6 +208,7 @@ impl From<&'static ItemDef> for Item {
       def: value,
       pockets: value.pockets.iter().map(|d| d.into()).collect(),
       conv: value.conversions.iter().map(|c| c.into()).collect(),
+      paused_craft: None,
     }
   }
 }

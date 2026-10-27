@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, sync::Arc};
+use std::{error::Error, fmt::Display, rc::Rc};
 
 use crossterm::event::{Event, KeyCode, KeyEvent, read};
 use rand::rngs::ThreadRng;
@@ -11,7 +11,7 @@ use crate::{
   location::{EnvData, Locations},
   player::{
     Effect, Endgame, Player,
-    action::{Action, ActionContent, PushActionError},
+    action::{Action, ActionContent},
   },
   ui::NumberRequester,
 };
@@ -33,16 +33,6 @@ pub struct Game {
 }
 
 impl Game {
-  // pub fn new() -> Self {
-  //   Self {
-  //     rng: rand::rng(),
-  //     time: Duration::ZERO,
-  //     locations: Locations::new(),
-  //     player: Player::new(),
-  //     endgame_message: None,
-  //   }
-  // }
-
   /// ms
   pub fn tick(&mut self) -> Result<(), Endgame> {
     self.time += 1.ms();
@@ -71,6 +61,7 @@ impl Game {
 #[strum(serialize_all = "snake_case")]
 pub enum WaitActionError {
   LowEfficiency,
+  Interrupted,
   Death(Endgame),
 }
 impl From<Endgame> for WaitActionError {
@@ -85,29 +76,10 @@ impl Error for WaitActionError {}
 impl Display for WaitActionError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.name()) }
 }
-#[derive(Debug)]
-pub enum ActionError {
-  Push(PushActionError),
-  Wait(WaitActionError),
-}
-impl Display for ActionError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    use ActionError::*;
-    match self {
-    Push(e) => write!(f, "{e}"),
-    Wait(e) => write!(f, "{e}"),
-    }
-  }
-}
-impl From<PushActionError> for ActionError {
-  fn from(value: PushActionError) -> Self { Self::Push(value) }
-}
-impl From<WaitActionError> for ActionError {
-  fn from(value: WaitActionError) -> Self { Self::Wait(value) }
-}
+
 impl Game {
   pub fn wait_player_action(&mut self, id: &'static str) -> Result<(), WaitActionError> {
-    while let Some(_) = self.player.actions.iter().find(|a| a.id == id) {
+    while self.player.actions.iter().find(|a| a.id == id).is_some() {
       self.tick()?;
       if self.player.get_efficiency() < 0.25 {
         return Err(WaitActionError::LowEfficiency);
@@ -116,7 +88,7 @@ impl Game {
     Ok(())
   }
 
-  pub fn player_action(&mut self, action: Action) -> Result<(), ActionError> {
+  pub fn player_action(&mut self, action: Action) -> Result<(), Box<dyn Error>> {
     let id = action.id;
     self.player.try_push_action(action)?;
     self.wait_player_action(id)?;
@@ -124,7 +96,7 @@ impl Game {
   }
 
   pub fn time_pass(&mut self, time: Duration) -> Result<(), Endgame> {
-    if time == Duration::ZERO {
+    if time.is_zero() {
       return Ok(());
     }
     for _ in 0..=time.as_ms() {
@@ -150,8 +122,8 @@ impl Game {
   pub fn run(&mut self) -> Result<!, Box<dyn std::error::Error>> {
     loop {
       self.render()?;
-      match read()? {
-      Event::Key(KeyEvent { code, .. }) => match code {
+      let Event::Key(KeyEvent { code, .. }) = read()? else { continue };
+      match code {
       KeyCode::Char(ch) => match ch {
       't' => self.travel()?,
       'p' => self.pickup()?,
@@ -161,14 +133,10 @@ impl Game {
       'i' => self.inventory()?,
       'w' => self.worn()?,
       'r' => self.rest()?,
-      'q' => {
-        return Err(Box::new(Endgame::from(t!("game.quit"))));
-      }
+      'q' => return Err(Box::new(Endgame::from(t!("game.quit")))),
       _ => {}
       },
       KeyCode::Esc => self.menu()?,
-      _ => {}
-      },
       _ => {}
       }
     }
@@ -195,14 +163,14 @@ impl Game {
     };
     match self.player_action(Action {
       id: "rest",
-      f: Arc::new(|_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)])),
+      f: Rc::new(|_| ActionContent::new(vec![], vec![Effect::HealthRegenMul(1.2)])),
       total_dur: sec.s(),
       ..
     }) {
     Ok(()) => Ok(()),
     Err(not_ok) => {
       s.message(not_ok.to_string())?;
-      return Ok(());
+      Ok(())
     }
     }
   }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
   game::Game,
@@ -35,8 +35,7 @@ impl Game {
       title: Some(t!("action.pickup.title")),
       data: options
         .iter()
-        .enumerate()
-        .map(|(_, (item, count, dur, activity))| DataItem {
+        .map(|(item, count, dur, activity)| DataItem {
           text: t!(
             "action.pickup.entry",
             name = item.name(),
@@ -74,7 +73,7 @@ impl Game {
       };
       match self.player_action(Action {
         id: "gather",
-        f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+        f: Rc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
         total_dur: pick_time,
         ..
       }) {

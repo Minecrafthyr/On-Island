@@ -7,6 +7,12 @@ use paste::paste;
 
 pub trait Zero {
   const ZERO: Self;
+  fn is_zero(&self) -> bool
+  where
+    Self: PartialEq + Copy,
+  {
+    *self == Self::ZERO
+  }
 }
 
 macro_rules! unit {

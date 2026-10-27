@@ -71,18 +71,14 @@ impl Default for Locations {
     use crate::item::*;
     let stranded_ship = LocationData {
       env: NaturalAir | Dry,
-      pickup_stacks: ItemStacks(vec![
-        WATER_BOTTLE.clone() * 10,
-        BISCUIT.item() * 10,
-        CANVAS_BACKPACK.item() * 1,
-      ]),
+      pickup_stacks: ItemStacks(vec![water_bottle() * 10, BISCUIT * 10, CANVAS_BACKPACK * 1]),
       can_go: vec![(Beach, 30.s(), &[]), (ShallowSea, 1.mnt(), &[PLASTIC_BOTTLE])],
       ..
     };
     let beach = LocationData {
       env: NaturalAir | Dry | Wet | FlowingShallow,
-      pickup_stacks: ItemStacks(vec![ROCK.item() * 50]),
-      gather_stacks: ItemStacks(vec![LIVING_FISH.item() * 10]),
+      pickup_stacks: ItemStacks(vec![ROCK * 50]),
+      gather_stacks: ItemStacks(vec![LIVING_FISH * 10]),
       can_go: vec![
         (StrandedShip, 40.s(), &[]),
         (Forest, 3.mnt(), &[]),
@@ -92,16 +88,17 @@ impl Default for Locations {
     };
     let shallow_sea = LocationData {
       env: NaturalAir | Wet | FlowingShallow,
-      pickup_stacks: ItemStacks(vec![ROCK.item() * 56]),
-      gather_stacks: ItemStacks(vec![LIVING_FISH.item() * 10, BIG_ROCK.item() * 80]),
+      pickup_stacks: ItemStacks(vec![ROCK * 56]),
+      gather_stacks: ItemStacks(vec![LIVING_FISH * 10, BIG_ROCK * 80]),
       can_go: vec![(Beach, 1.mnt(), &[PLASTIC_BOTTLE, LIVING_FISH])],
-      mob: vec![(FISH, Gen { attempts: 1..=2, chance: 0.2, limit: 20, interval: 20.mnt(), .. })],
+      spawn: vec![(FISH, Gen { attempts: 1..=2, chance: 0.2, limit: 20, interval: 20.mnt(), .. })],
       ..
     };
     let forest = LocationData {
       env: NaturalAir | Dry | Moist,
-      gather_stacks: ItemStacks(vec![TREE.item() * 500, TREE_VINE.item() * 400]),
-      res: vec![
+      pickup_stacks: ItemStacks(vec![ROCK * 12, BRANCH * 20]),
+      gather_stacks: ItemStacks(vec![TREE * 500, TREE_VINE * 400]),
+      resource: vec![
         (TREE.into(), Gen { attempts: 1..=1, chance: 1.0, limit: 600, interval: 60.day(), .. }),
         (TREE_VINE.into(), Gen {
           attempts: 1..=1,
@@ -126,12 +123,13 @@ pub struct Gen {
   pub last_time: Duration = Duration::ZERO,
 }
 impl Gen {
-  pub fn tick(&mut self, time: Duration, rng: &mut impl Rng) -> u64 {
+  pub fn tick(&mut self, time: Duration, rng: &mut impl Rng, existing: u64) -> u64 {
     let next_time = self.last_time + self.interval;
     if next_time <= time {
       self.last_time = next_time;
       let attempts = rng.random_range(self.attempts.clone()) as f64;
-      rng.random_range((attempts * self.chance)..attempts) as u64
+      let add = rng.random_range((attempts * self.chance)..attempts) as u64;
+      (existing + add).min(self.limit)
     } else {
       0
     }
@@ -141,9 +139,9 @@ pub struct LocationData {
   pub env: BitFlags<EnvData>,
   pub pickup_stacks: ItemStacks = ItemStacks::new(),
   pub gather_stacks: ItemStacks = ItemStacks::new(),
-  pub res: Vec<(Item, Gen)> = vec![],
+  pub resource: Vec<(Item, Gen)> = vec![],
   pub creatures: Vec<Creature> = vec![],
-  pub mob: Vec<(&'static CreatureDef, Gen)> = vec![],
+  pub spawn: Vec<(&'static CreatureDef, Gen)> = vec![],
   pub can_go: Vec<(Location, Duration, &'static [&'static ItemDef])> = vec![],
 }
 impl LocationData {
@@ -152,24 +150,18 @@ impl LocationData {
     self.gather_stacks += converted_gather;
     let converted_pickups = self.pickup_stacks.tick(self.env);
     self.pickup_stacks += converted_pickups;
-    for (i, p) in &mut self.res {
-      let add_count = p.tick(time, rng);
+    for (i, p) in &mut self.resource {
       if let Some(is) = self.gather_stacks.iter_mut().find(|is| is.item == *i) {
-        is.count = p.limit.min(is.count + add_count);
+        is.count = p.tick(time, rng, is.count);
       } else {
-        self.gather_stacks.push(i.clone() * add_count);
+        self.gather_stacks.push(i.clone() * p.tick(time, rng, 0));
       }
     }
-    for (c, p) in &mut self.mob {
-      let c = *c;
-      for _ in 0
-        ..p.tick(time, rng).min(
-          p.limit.saturating_sub(
-            self.creatures.iter().filter(|creature| creature.def == c).count() as u64,
-          ),
-        )
-      {
-        self.creatures.push(c.into());
+    for (cref, g) in &mut self.spawn {
+      let cdef = *cref;
+      let creature_count = self.creatures.iter().filter(|c| c.def == cdef).count() as u64;
+      for _ in 0..g.tick(time, rng, creature_count) {
+        self.creatures.push(cdef.into());
       }
     }
   }
@@ -197,7 +189,7 @@ mod tests {
   fn mob_generation_respects_limit() {
     let mut location = LocationData {
       env: EnvData::NaturalAir.into(),
-      mob: vec![(FISH, Gen { attempts: 2..=2, chance: 0.5, limit: 1, interval: 1.ms(), .. })],
+      spawn: vec![(FISH, Gen { attempts: 2..=2, chance: 0.5, limit: 1, interval: 1.ms(), .. })],
       ..
     };
     let mut rng = rand::rng();

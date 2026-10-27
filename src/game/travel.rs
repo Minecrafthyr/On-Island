@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
   game::Game,
@@ -40,7 +40,7 @@ impl Game {
     let (new_location, travel_time, _) = options[choice];
     match self.player_action(Action {
       id: "travel",
-      f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)])),
+      f: Rc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(1.4)])),
       total_dur: travel_time,
       ..
     }) {

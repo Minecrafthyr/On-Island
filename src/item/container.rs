@@ -50,12 +50,22 @@ impl Pocket {
     {
       return 0;
     }
-    let volume_cap: u64 = ((self.capacity - self.volume_used) / item.volume.into()).into();
+    let item_volume = item.get_volume();
+    let volume_cap = if item_volume == Volume::ZERO {
+      count
+    } else {
+      ((self.capacity - self.volume_used) / item_volume.into()).into()
+    };
     let max_hold = volume_cap.min(count);
     if max_hold == 0 {
       return 0;
     }
-    let weight_cap = ((self.max_weight - self.weight) / item.weight.into()).into();
+    let item_weight = item.get_weight();
+    let weight_cap = if item_weight == Mass::ZERO {
+      count
+    } else {
+      ((self.max_weight - self.weight) / item_weight.into()).into()
+    };
     max_hold.min(weight_cap)
   }
 
@@ -68,8 +78,8 @@ impl Pocket {
     if count == 0 {
       return 0;
     }
-    self.volume_used += item.volume * count;
-    self.weight += item.weight * count;
+    self.volume_used += item.get_volume() * count;
+    self.weight += item.get_weight() * count;
     self.stacks += item.clone() * count;
     count
   }
@@ -79,8 +89,8 @@ impl Pocket {
     if count == 0 {
       return 0;
     }
-    self.volume_used += stack.item.volume * count;
-    self.weight += stack.item.weight * count;
+    self.volume_used += stack.item.get_volume() * count;
+    self.weight += stack.item.get_weight() * count;
     stack.count -= count;
     self.stacks += ItemStack { item: stack.item.clone(), count };
     count

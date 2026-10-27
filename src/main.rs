@@ -1,11 +1,11 @@
 #![feature(
   const_trait_impl,
   const_default,
-  derive_const,
   const_convert,
-  inherent_associated_types,
   const_precise_live_drops,
   const_ops,
+  derive_const,
+  // inherent_associated_types,
   default_field_values,
   // transmute_neo
   // mut_restriction,
@@ -13,7 +13,13 @@
   // const_heap,
   // const_closures
 )]
-#![allow(incomplete_features, clippy::missing_transmute_annotations, confusable_idents)]
+#![allow(
+  incomplete_features,
+  clippy::missing_transmute_annotations,
+  clippy::redundant_field_names,
+  clippy::type_complexity,
+  confusable_idents
+)]
 use std::{
   io::stdout,
   panic::{catch_unwind, panic_any},

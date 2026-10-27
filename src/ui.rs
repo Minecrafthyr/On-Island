@@ -293,7 +293,7 @@ where
           break;
         }
         Esc => return Ok(None),
-        Char(n) if kind.is_press() && matches!(n, '0'..'9') => {
+        Char(n) if kind.is_press() && n.is_ascii_digit() => {
           let n = n.to_digit(10).unwrap() as usize;
           if now - last_press < std::time::Duration::from_millis(300) {
             count = (count * 10 + n).min(max_select);

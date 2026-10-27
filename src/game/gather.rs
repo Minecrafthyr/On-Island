@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
   game::Game,
@@ -57,7 +57,7 @@ impl Game {
         for _ in 0..count {
           match self.player_action(Action {
             id: "gather",
-            f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+            f: Rc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
             total_dur: time,
             ..
           }) {
@@ -75,7 +75,7 @@ impl Game {
       Multiple { time, activity, f } => {
         match self.player_action(Action {
           id: "gather",
-          f: Arc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
+          f: Rc::new(move |_| ActionContent::new(vec![], vec![Effect::ActivityMul(activity)])),
           total_dur: time,
           ..
         }) {

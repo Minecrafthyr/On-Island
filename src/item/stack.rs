@@ -15,14 +15,13 @@ pub struct ItemDefStack {
 
 impl Display for ItemDefStack {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{} ×{}", Item::new(self.item).name(), self.count)
+    write!(f, "{} ×{}", self.item.name(), self.count)
   }
 }
 #[derive(Clone, PartialEq, New)]
 #[derive_const(From)]
 #[new(const = true)]
-#[from((Item, u64),(&'static ItemDef, u64))]
-
+#[from((Item, u64), (&'static ItemDef, u64))]
 pub struct ItemStack {
   pub item: Item,
   pub count: u64,

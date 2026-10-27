@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use rand::random_range;
 
 use super::*;
@@ -250,12 +248,14 @@ pub const COTTON_PANTIES: &ItemDef =
   &ItemDef { id: "cotton_panties", volume: 1.L(), weight: 200.g(), wearable: true, .. };
 pub const FIRE: &ItemDef =
   &ItemDef { id: "fire", volume: 1.mL(), weight: (Mass::ZERO), phase: (Phase::Gas), .. };
+pub const PAUSED_CRAFT: &ItemDef =
+  &ItemDef { id: "paused_craft", volume: Volume::ZERO, weight: Mass::ZERO, .. };
 
-pub static WATER_BOTTLE: LazyLock<Item> = LazyLock::new(|| {
-  let mut item: Item = PLASTIC_BOTTLE.into();
-  item.pockets[0].stacks += WATER.item() * 500_000;
+pub fn water_bottle() -> Item {
+  let mut item = PLASTIC_BOTTLE.item();
+  item.pockets[0].stacks += WATER * 500_000;
   item
-});
+}
 
 #[cfg(test)]
 mod tests {

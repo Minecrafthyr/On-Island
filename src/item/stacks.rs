@@ -88,7 +88,7 @@ impl ItemStacks {
   }
 
   pub fn insert_from_defs(&mut self, defs: ItemDefStacks) {
-    for def in defs.into_iter() {
+    for def in defs.iter() {
       self.insert_stack((*def).into());
     }
   }
@@ -146,12 +146,12 @@ impl<F: Fn(&Item) -> bool> TakeItems<F> for ItemStacks {
     while let Some(i) = self.iter_mut().position(|ei| f(&ei.item)) {
       if count > self[i].count {
         count -= self[i].count;
-        removed += self.remove(i);
+        removed.insert_stack(self.remove(i));
       } else {
         if count < self[i].count {
           self[i].count = self[i].count.saturating_sub(count);
         } else {
-          removed += self.remove(i);
+          removed.insert_stack(self.remove(i));
         }
         return (removed, 0);
       }

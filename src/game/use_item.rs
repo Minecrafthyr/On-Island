@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use itertools::Itertools;
 
@@ -9,19 +9,18 @@ use crate::{
     Effect,
     action::{Action, ActionContent},
   },
+  recipe::crafting::CraftStatus,
   ui::{DataItem, DisplayList, NumberRequester},
-  utils::{NameAndDesc, TakeItems},
+  utils::{IterStack, NameAndDesc, TakeItems},
 };
 
 impl Game {
   pub fn use_item(&mut self) -> Result<(), Box<dyn std::error::Error>> {
     let options: Vec<_> = self
       .player
-      .worn
-      .iter_mut()
-      .flat_map(|c| c.pockets.iter())
-      .flat_map(|p| p.stacks.iter())
-      .filter(|is| !is.item.uses.is_empty())
+      .iter_stack()
+      .filter(|stack| !stack.item.uses.is_empty() || stack.item.paused_craft.is_some())
+      .cloned()
       .collect();
     if options.is_empty() {
       return Ok(());
@@ -49,6 +48,60 @@ impl Game {
     };
     let item_stack = options[choice].clone();
     let item = &item_stack.item;
+    if item.paused_craft.is_some() {
+      let actions = [t!("action.use_item.paused.continue"), t!("action.use_item.paused.dismantle")];
+      let Some(action) = s.list(DisplayList {
+        title: Some(t!("action.use_item.paused.title", item = item.name())),
+        data: actions
+          .into_iter()
+          .enumerate()
+          .map(|(index, text)| DataItem { text, selected: (), enter: move |_| Ok(index == 0) })
+          .collect(),
+        indexed: true,
+        ..
+      })?
+      else {
+        return Ok(());
+      };
+
+      let (mut removed, mismatch) = self.player.take_items(|candidate| candidate == item, 1);
+      if mismatch != 0 {
+        return Err("the selected paused craft is no longer in the inventory".into());
+      }
+      let mut stack = removed.pop().ok_or("the selected paused craft could not be removed")?;
+      if action {
+        let paused = stack
+          .item
+          .paused_craft
+          .as_deref()
+          .ok_or("the selected item is not a paused craft")?
+          .clone();
+        match self.continue_craft(paused)? {
+        CraftStatus::Complete => {}
+        CraftStatus::Paused(paused) => {
+          self.store_paused_craft(paused);
+        }
+        CraftStatus::ApplyFailed(paused) => {
+          let recipe_name = paused.recipe_name().into_owned();
+          self.store_paused_craft(paused);
+          s.message(t!("action.crafting.apply_failed", recipe = recipe_name))?;
+        }
+        CraftStatus::Interrupted(message) => {
+          s.message(message)?;
+        }
+        }
+      } else {
+        let paused =
+          stack.item.paused_craft.take().ok_or("the selected item is not a paused craft")?;
+        for returned in paused.dismantle() {
+          if let Some(left) = self.player.insert_stack(returned) {
+            self.locations[self.player.location].pickup_stacks += left;
+          }
+        }
+        s.message(t!("action.use_item.paused.dismantled", item = item.name()))?;
+      }
+      return Ok(());
+    }
     let uses_data = item.uses;
     let Some(choice) = s.list(DisplayList {
       title: Some(t!("action.use_item.data.title", item = item.name())),
@@ -86,7 +139,7 @@ impl Game {
     for _ in 0..count {
       match self.player_action(Action {
         id: "use_item",
-        f: Arc::new(move |_| {
+        f: Rc::new(move |_| {
           ActionContent::new(vec![], vec![Effect::ActivityMul(use_data.activity)])
         }),
         total_dur: use_data.dur,

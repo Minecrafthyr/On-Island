@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, sync::Arc};
+use std::{error::Error, fmt::Display, rc::Rc};
 
 use inew::New;
 use itertools::Itertools;
@@ -138,7 +138,7 @@ impl Player {
   pub fn max_pickup_weight(&self) -> Mass { kg(20) * self.get_efficiency() }
 
   pub fn max_carry_volume(&self) -> Volume {
-    L(10) + self.worn.iter().fold(Volume::ZERO, |v, i| v + i.volume)
+    L(10) + self.worn.iter().fold(Volume::ZERO, |v, i| v + i.get_volume())
   }
 
   pub fn worn_volume_total(&self) -> Volume {
@@ -186,10 +186,10 @@ impl Player {
   }
 
   pub fn pickup_time(&self, item: &Item) -> Option<(Duration, f64)> {
-    if item.weight > self.max_pickup_weight() {
+    if item.get_weight() > self.max_pickup_weight() {
       return None;
     }
-    let weight = item.weight.as_kg_f64().max(0.0);
+    let weight = item.get_weight().as_kg_f64().max(0.0);
 
     let base_time = weight * 0.1 + 0.6;
     let base_activity = weight * 0.1 + 1.2;

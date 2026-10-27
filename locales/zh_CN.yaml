@@ -62,6 +62,9 @@ item:
   vine_backpack:
     name: 树藤背包
     description: 用干树藤编织而成的背包。
+  paused_craft:
+    name: 未完成的合成
+    description: 已开始但尚未完成的合成；可以继续制作或拆解取回材料。
   canvas_backpack:
     name: 帆布背包
     description: 常见款式的帆布背包。
@@ -100,6 +103,8 @@ damage:
   dehydrate: 你被渴死了！
   injure: 你伤重而死！
   generic: 你死了！
+wait_action_result:
+  interrupted: 行动被打断。
 action:
   inventory:
     title: 物品栏
@@ -134,13 +139,19 @@ action:
     entry: "%{name} ×%{count} - %{description}"
     data.title: "使用%{item}"
     data: "%{name} (每个%{duration}秒，%{activity}×活动) - %{description}"
+    paused:
+      title: "使用%{item}"
+      continue: 继续合成
+      dismantle: 拆解并返还材料
+      dismantled: "已拆解%{item}并返还材料。"
   crafting:
     title: 可用合成配方：
     choose: 请选择要制作的配方编号
     how_many: 制作多少次？
-    entry: "%{title}: %{inputs} → %{outputs} (%{duration}秒，%{activity}×活动)"
+    entry: "%{name}"
     empty: 你没有足够的材料来进行任何合成。
     apply_failed: "%{recipe}合成失败。"
+    paused: 合成已暂停，并已作为物品保存；可在物品栏中使用以继续合成或拆解。
     incorrupted: 合成终止。
   travel:
     title: "当前地点：%{current_location}\n可以前往以下地点："
@@ -152,7 +163,7 @@ use:
 crafting.recipe: 配方
 crafting:
   recipe:
-    step: "[%{index}] %{depends} (%{time}) - %{activity}"
+    step: "[%{index}] %{name} - %{inputs} -> %{outputs} (%{time}秒，%{activity}×活动)"
     dry_tree_vine:
       name: 烤干树藤
     vine_backpack:

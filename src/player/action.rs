@@ -27,7 +27,7 @@ pub struct ActionContent {
 #[derive(Clone)]
 pub struct Action {
   pub id: &'static str,
-  pub f: Arc<dyn Fn(&mut Player) -> ActionContent>,
+  pub f: Rc<dyn Fn(&mut Player) -> ActionContent>,
   pub progress: Duration = Duration::ZERO,
   pub total_dur: Duration,
 }
@@ -54,16 +54,16 @@ impl Player {
   }
 
   pub(super) fn tick_actions(&mut self) {
-    let mut action_idx = 0;
-    while action_idx < self.actions.len() {
+    let mut idx = 0;
+    while idx < self.actions.len() {
       let efficiency = 1.ms() * self.get_efficiency();
-      let action = &mut self.actions[action_idx];
+      let action = &mut self.actions[idx];
       action.progress += efficiency;
       if action.progress > action.total_dur {
-        self.actions.remove(action_idx);
+        self.actions.remove(idx);
         self.eval_actions();
       } else {
-        action_idx += 1;
+        idx += 1;
       }
     }
   }
@@ -73,6 +73,7 @@ impl Player {
     if body_parts.into_iter().any(|(bp, _)| self.used_body_parts.contains(&(bp, true))) {
       Err(PushActionError::BodyPartUsed)
     } else {
+      self.actions.push(action);
       Ok(())
     }
   }
